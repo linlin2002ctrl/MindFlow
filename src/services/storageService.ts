@@ -7,7 +7,7 @@ import { env } from '@/lib/env';
 import { supabase } from '@/integrations/supabase/client';
 
 const DB_NAME = 'mindflow-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increment database version to trigger upgrade
 
 // Object store names
 const JOURNAL_ENTRIES_STORE = 'journalEntries';
@@ -24,10 +24,17 @@ async function initDB(): Promise<IDBPDatabase> {
   if (db) return db;
 
   db = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       if (!db.objectStoreNames.contains(JOURNAL_ENTRIES_STORE)) {
-        db.createObjectStore(JOURNAL_ENTRIES_STORE, { keyPath: 'id' });
+        const journalStore = db.createObjectStore(JOURNAL_ENTRIES_STORE, { keyPath: 'id' });
+        journalStore.createIndex('sync_status', 'sync_status', { unique: false }); // Create index here
+      } else if (oldVersion < 2) { // If upgrading from version 1 to 2
+        const journalStore = transaction.objectStore(JOURNAL_ENTRIES_STORE);
+        if (!journalStore.indexNames.contains('sync_status')) {
+          journalStore.createIndex('sync_status', 'sync_status', { unique: false });
+        }
       }
+
       if (!db.objectStoreNames.contains(AI_QUESTIONS_STORE)) {
         db.createObjectStore(AI_QUESTIONS_STORE, { keyPath: 'id', autoIncrement: true });
       }
@@ -295,7 +302,7 @@ export const storageService = {
     try {
       const database = await initDB();
       const insights = await database.getAll(AI_INSIGHTS_STORE);
-      return insights.filter(insight => insight.user_id === userId).sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime());
+      return insights.filter(insight => insight.user_id === userId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } catch (error: any) {
       console.error("Error retrieving cached AI insights:", error);
       return [];
@@ -365,7 +372,9 @@ export const storageService = {
   },
 };
 
-// Add an index for sync_status to the journalEntries store
+// The index creation logic has been moved into the upgrade function.
+// This block is no longer needed and can be removed.
+/*
 initDB().then(database => {
   if (!database.objectStoreNames.contains(JOURNAL_ENTRIES_STORE)) {
     // This case should ideally not happen if initDB is called correctly
@@ -380,3 +389,4 @@ initDB().then(database => {
     tx.done.catch(err => console.error("Error creating sync_status index:", err));
   }
 }).catch(err => console.error("Failed to initialize DB for index creation:", err));
+*/
