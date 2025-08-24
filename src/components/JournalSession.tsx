@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, Easing, Variants } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConversationManager, SessionType } from '@/hooks/useConversationManager';
-import { Loader2 } from 'lucide-react';
+import { Loader2, WifiOff } from 'lucide-react'; // Import WifiOff icon
 import { cn } from '@/lib/utils';
 import GlassCard from '@/components/GlassCard';
 import { toast } from 'sonner';
@@ -39,6 +39,7 @@ const JournalSession: React.FC = () => {
     aiAnalysis,
     isSaving,
     isPaused,
+    isOffline, // Destructure isOffline
     startSession,
     processUserResponse,
     skipQuestion,
@@ -135,6 +136,11 @@ const JournalSession: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] p-4">
       <GlassCard className="w-full max-w-2xl text-center full-screen-mode">
+        {isOffline && (
+          <div className="absolute top-0 left-0 right-0 bg-red-600/80 text-white text-sm py-2 flex items-center justify-center gap-2 rounded-t-xl">
+            <WifiOff className="h-4 w-4" /> You are offline. Some features may be limited.
+          </div>
+        )}
         <h1 className="text-4xl font-bold mb-4 text-white" aria-live="polite">
           {isSessionActive ? "MindFlow Journal" : "Start Your Flow"}
         </h1>

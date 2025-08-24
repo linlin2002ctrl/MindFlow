@@ -45,7 +45,13 @@ async function initDB(): Promise<IDBPDatabase> {
         db.createObjectStore(USER_PROFILES_STORE, { keyPath: 'id' });
       }
       if (!db.objectStoreNames.contains(AI_INSIGHTS_STORE)) {
-        db.createObjectStore(AI_INSIGHTS_STORE, { keyPath: 'id' });
+        const insightsStore = db.createObjectStore(AI_INSIGHTS_STORE, { keyPath: 'id' });
+        insightsStore.createIndex('sync_status', 'sync_status', { unique: false }); // Add sync_status index for insights
+      } else if (oldVersion < 2) { // If upgrading from version 1 to 2
+        const insightsStore = transaction.objectStore(AI_INSIGHTS_STORE);
+        if (!insightsStore.indexNames.contains('sync_status')) {
+          insightsStore.createIndex('sync_status', 'sync_status', { unique: false });
+        }
       }
     },
   });
@@ -138,7 +144,7 @@ export const storageService = {
       if (entry.entry_text) {
         encryptedEntry.entry_text = await encryptData(entry.entry_text, userId);
       }
-      if (entry.conversation && entry.conversation.length > 0) {
+      if (entry.conversation && Array.isArray(entry.conversation) && entry.conversation.length > 0) {
         encryptedEntry.conversation = await encryptData(JSON.stringify(entry.conversation), userId) as any; // Store as encrypted string
       }
       encryptedEntry.is_encrypted = true;
@@ -162,7 +168,7 @@ export const storageService = {
         if (entry.entry_text) {
           entry.entry_text = await decryptData(entry.entry_text, userId);
         }
-        if (entry.conversation) {
+        if (entry.conversation && typeof entry.conversation === 'string') {
           entry.conversation = JSON.parse(await decryptData(entry.conversation, userId));
         }
         entry.is_encrypted = false; // Mark as decrypted for use
@@ -184,7 +190,7 @@ export const storageService = {
           if (entry.entry_text) {
             entry.entry_text = await decryptData(entry.entry_text, userId);
           }
-          if (entry.conversation) {
+          if (entry.conversation && typeof entry.conversation === 'string') {
             entry.conversation = JSON.parse(await decryptData(entry.conversation, userId));
           }
           entry.is_encrypted = false;
@@ -219,7 +225,7 @@ export const storageService = {
       const store = tx.objectStore(AI_QUESTIONS_STORE);
       await store.clear(); // Clear old questions
       for (const q of questions) {
-        await store.add({ question: q, id: Date.now() + Math.random() }); // Add with a unique ID
+        await store.add({ question: q, id: crypto.randomUUID() }); // Add with a unique ID
       }
       await tx.done;
     } catch (error: any) {
@@ -235,6 +241,20 @@ export const storageService = {
     } catch (error: any) {
       console.error("Error retrieving cached AI questions:", error);
       return [];
+    }
+  },
+
+  // New function to cache initial AI questions if the store is empty
+  cacheInitialAIQuestions: async (initialQuestions: string[]): Promise<void> => {
+    try {
+      const database = await initDB();
+      const count = await database.count(AI_QUESTIONS_STORE);
+      if (count === 0) {
+        console.log("Caching initial AI questions...");
+        await storageService.cacheAIQuestions(initialQuestions);
+      }
+    } catch (error: any) {
+      console.error("Error caching initial AI questions:", error);
     }
   },
 
@@ -315,50 +335,74 @@ export const storageService = {
       return;
     }
 
-    console.log("Attempting to sync pending journal entries with Supabase...");
+    console.log("Attempting to sync pending journal entries and AI insights with Supabase...");
     const database = await initDB();
-    const tx = database.transaction(JOURNAL_ENTRIES_STORE, 'readwrite');
-    const store = tx.objectStore(JOURNAL_ENTRIES_STORE);
 
-    const pendingEntries = await store.index('sync_status').getAll('pending'); // Assuming an index on sync_status
+    // Sync Journal Entries
+    const journalTx = database.transaction(JOURNAL_ENTRIES_STORE, 'readwrite');
+    const journalStore = journalTx.objectStore(JOURNAL_ENTRIES_STORE);
+    const pendingJournalEntries = await journalStore.index('sync_status').getAll('pending');
 
-    if (pendingEntries && pendingEntries.length > 0) {
-      showSuccess(`Found ${pendingEntries.length} pending entries. Syncing...`);
-      for (const entry of pendingEntries) {
+    if (pendingJournalEntries && pendingJournalEntries.length > 0) {
+      showSuccess(`Found ${pendingJournalEntries.length} pending journal entries. Syncing...`);
+      for (const entry of pendingJournalEntries) {
         try {
-          // Decrypt before sending to Supabase
           const decryptedEntry = { ...entry };
           if (entry.is_encrypted) {
             if (entry.entry_text) {
               decryptedEntry.entry_text = await decryptData(entry.entry_text, userId);
             }
-            if (entry.conversation) {
+            if (entry.conversation && typeof entry.conversation === 'string') {
               decryptedEntry.conversation = JSON.parse(await decryptData(entry.conversation, userId));
             }
             decryptedEntry.is_encrypted = false;
           }
 
-          // Attempt to update or insert into Supabase
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('journal_entries')
-            .upsert({ ...decryptedEntry, sync_status: 'synced' }, { onConflict: 'id' })
-            .select()
-            .single();
+            .upsert({ ...decryptedEntry, sync_status: 'synced' }, { onConflict: 'id' });
 
           if (error) throw error;
 
-          // Update local entry status to synced
-          await store.put({ ...entry, sync_status: 'synced' });
-          console.log(`Synced entry: ${entry.id}`);
+          await journalStore.put({ ...entry, sync_status: 'synced' });
+          console.log(`Synced journal entry: ${entry.id}`);
         } catch (err: any) {
-          console.error(`Failed to sync entry ${entry.id}:`, err.message);
-          showError(`Failed to sync entry ${entry.id}: ${err.message}`);
+          console.error(`Failed to sync journal entry ${entry.id}:`, err.message);
+          showError(`Failed to sync journal entry ${entry.id}: ${err.message}`);
         }
       }
-      await tx.done;
+      await journalTx.done;
       showSuccess("All pending journal entries synchronized!");
     } else {
       console.log("No pending journal entries to sync.");
+    }
+
+    // Sync AI Insights
+    const insightsTx = database.transaction(AI_INSIGHTS_STORE, 'readwrite');
+    const insightsStore = insightsTx.objectStore(AI_INSIGHTS_STORE);
+    const pendingAiInsights = await insightsStore.index('sync_status').getAll('pending');
+
+    if (pendingAiInsights && pendingAiInsights.length > 0) {
+      showSuccess(`Found ${pendingAiInsights.length} pending AI insights. Syncing...`);
+      for (const insight of pendingAiInsights) {
+        try {
+          const { error } = await supabase
+            .from('ai_insights')
+            .upsert({ ...insight, sync_status: 'synced' }, { onConflict: 'id' });
+
+          if (error) throw error;
+
+          await insightsStore.put({ ...insight, sync_status: 'synced' });
+          console.log(`Synced AI insight: ${insight.id}`);
+        } catch (err: any) {
+          console.error(`Failed to sync AI insight ${insight.id}:`, err.message);
+          showError(`Failed to sync AI insight ${insight.id}: ${err.message}`);
+        }
+      }
+      await insightsTx.done;
+      showSuccess("All pending AI insights synchronized!");
+    } else {
+      console.log("No pending AI insights to sync.");
     }
   },
 
