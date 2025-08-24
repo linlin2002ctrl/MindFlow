@@ -11,6 +11,8 @@ import JournalPage from "./pages/JournalPage";
 import MoodTrackerPage from "./pages/MoodTrackerPage";
 import AIConversationPage from "./pages/AIConversationPage";
 import InsightsPage from "./pages/InsightsPage";
+import LoginPage from "./pages/LoginPage"; // Import the new LoginPage
+import { SessionContextProvider } from "./contexts/SessionContext"; // Import the SessionContextProvider
 
 const queryClient = new QueryClient();
 
@@ -20,9 +22,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Layout>
+        <SessionContextProvider> {/* Wrap the entire app with SessionContextProvider */}
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/login" element={<LoginPage />} /> {/* Add the login page route */}
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/mood-tracker" element={<MoodTrackerPage />} />
@@ -31,7 +34,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </Layout>
+        </SessionContextProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
