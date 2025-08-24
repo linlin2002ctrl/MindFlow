@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { generateQuestion, analyzeResponse, suggestFollowUp } from '@/services/geminiService';
 import { showSuccess, showError } from '@/utils/toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/contexts/SessionContext';
+import { journalService, JournalEntry } from '@/services/journalService'; // Import journalService
+import { syncService } from '@/services/syncService'; // Import syncService
 
 export type SessionType = 'quick_checkin' | 'standard_session' | 'deep_dive';
 
@@ -97,22 +98,17 @@ export const useConversationManager = () => {
 
     setState(s => ({ ...s, isSaving: true }));
     try {
-      const { error } = await supabase
-        .from('journal_entries')
-        .update({
-          session_type: state.sessionType,
-          mood_rating: state.currentMood,
-          conversation: state.conversationHistory,
-          ai_analysis: state.aiAnalysis ? { text: state.aiAnalysis } : {},
-          is_encrypted: false,
-          sync_status: state.isOffline ? 'pending' : status,
-          updated_at: new Date().toISOString(),
-          entry_text: state.entryText, // Save the full entry text
-        })
-        .eq('id', state.currentEntryId);
+      const updatedEntry = await journalService.updateEntry(state.currentEntryId, {
+        session_type: state.sessionType,
+        mood_rating: state.currentMood,
+        conversation: state.conversationHistory,
+        ai_analysis: state.aiAnalysis ? { text: state.aiAnalysis } : null,
+        is_encrypted: false,
+        sync_status: state.isOffline ? 'pending' : status,
+        entry_text: state.entryText,
+      });
 
-      if (error) {
-        console.error("Error saving entry:", error);
+      if (!updatedEntry) {
         showError("Auto-save failed!");
       } else {
         console.log("Entry saved successfully.");
@@ -127,17 +123,27 @@ export const useConversationManager = () => {
 
 
   useEffect(() => {
-    const handleOnline = () => setState(s => ({ ...s, isOffline: false }));
+    const handleOnline = () => {
+      setState(s => ({ ...s, isOffline: false }));
+      if (user) {
+        syncService.syncPendingJournalEntries(user.id);
+      }
+    };
     const handleOffline = () => setState(s => ({ ...s, isOffline: true }));
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Initial sync attempt if online
+    if (navigator.onLine && user) {
+      syncService.syncPendingJournalEntries(user.id);
+    }
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [user]);
 
   // Auto-save effect
   useEffect(() => {
@@ -210,20 +216,19 @@ export const useConversationManager = () => {
       showSuccess("Journaling session ended and entry saved!");
     } else if (user && !state.currentEntryId) {
       // Fallback: if no ID was tracked, insert as a new entry
-      const { error } = await supabase
-        .from('journal_entries')
-        .insert({
-          user_id: user.id,
-          session_type: state.sessionType,
-          mood_rating: state.currentMood,
-          conversation: state.conversationHistory,
-          ai_analysis: { text: finalAnalysis },
-          is_encrypted: false,
-          sync_status: state.isOffline ? 'pending' : 'synced',
-          entry_text: state.entryText,
-        });
-      if (error) {
-        console.error("Error saving fallback journal entry:", error);
+      const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'> = {
+        user_id: user.id,
+        session_type: state.sessionType || 'standard_session', // Default if null
+        mood_rating: state.currentMood,
+        conversation: state.conversationHistory,
+        ai_analysis: { text: finalAnalysis },
+        is_encrypted: false,
+        sync_status: state.isOffline ? 'pending' : 'synced',
+        entry_text: state.entryText,
+        tags: null,
+      };
+      const newEntry = await journalService.createEntry(newEntryData);
+      if (!newEntry) {
         showError("Failed to save journal entry!");
       } else {
         showSuccess("Journaling session ended and entry saved!");
@@ -244,42 +249,31 @@ export const useConversationManager = () => {
       clearInterval(autoSaveIntervalRef.current);
     }
 
-    try {
-      const { error } = await supabase
-        .from('journal_entries')
-        .delete()
-        .eq('id', state.currentEntryId)
-        .eq('user_id', user.id); // Ensure only the user's own entry is deleted
+    const deleted = await journalService.deleteEntry(state.currentEntryId);
 
-      if (error) {
-        console.error("Error discarding journal entry:", error);
-        showError("Failed to discard session. Please try again.");
-      } else {
-        showSuccess("Journaling session discarded.");
-        setState({
-          currentMood: null,
-          sessionType: null,
-          conversationHistory: [],
-          currentQuestion: '',
-          entryText: '',
-          questionCount: 0,
-          maxQuestions: 0,
-          isSessionActive: false,
-          isLoadingAI: false,
-          aiAnalysis: null,
-          isOffline: !navigator.onLine,
-          queuedResponses: [],
-          currentEntryId: null,
-          isSaving: false,
-          isPaused: false,
-        });
-      }
-    } catch (err) {
-      console.error("Unexpected error discarding session:", err);
-      showError("An unexpected error occurred while discarding your session.");
-    } finally {
-      setState(s => ({ ...s, isLoadingAI: false }));
+    if (!deleted) {
+      showError("Failed to discard session. Please try again.");
+    } else {
+      showSuccess("Journaling session discarded.");
+      setState({
+        currentMood: null,
+        sessionType: null,
+        conversationHistory: [],
+        currentQuestion: '',
+        entryText: '',
+        questionCount: 0,
+        maxQuestions: 0,
+        isSessionActive: false,
+        isLoadingAI: false,
+        aiAnalysis: null,
+        isOffline: !navigator.onLine,
+        queuedResponses: [],
+        currentEntryId: null,
+        isSaving: false,
+        isPaused: false,
+      });
     }
+    setState(s => ({ ...s, isLoadingAI: false }));
   }, [user, state.currentEntryId]);
 
   const pauseSession = useCallback(async () => {
@@ -318,29 +312,27 @@ export const useConversationManager = () => {
     addMessageToHistory('model', `Let's start your ${sessionType.replace('_', ' ')}!`);
 
     // Create initial entry in Supabase to get an ID
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .insert({
-        user_id: user.id,
-        session_type: sessionType,
-        mood_rating: mood,
-        conversation: [],
-        ai_analysis: {},
-        is_encrypted: false,
-        sync_status: 'pending',
-        entry_text: '', // Initialize with empty text
-      })
-      .select('id')
-      .single();
+    const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'> = {
+      user_id: user.id,
+      session_type: sessionType,
+      mood_rating: mood,
+      conversation: [],
+      ai_analysis: null,
+      is_encrypted: false,
+      sync_status: 'pending',
+      entry_text: '',
+      tags: null,
+    };
 
-    if (error) {
-      console.error("Error creating initial journal entry:", error);
+    const newEntry = await journalService.createEntry(newEntryData);
+
+    if (!newEntry) {
       showError("Failed to start session. Please try again.");
       setState(s => ({ ...s, isLoadingAI: false, isSessionActive: false }));
       return;
     }
 
-    setState(s => ({ ...s, currentEntryId: data.id }));
+    setState(s => ({ ...s, currentEntryId: newEntry.id }));
 
     const firstQuestion = await getNextQuestion(mood, []);
     setState(s => ({

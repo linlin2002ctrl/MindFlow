@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Smile, Frown, Meh, Laugh, Angry } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/contexts/SessionContext';
+import { journalService } from '@/services/journalService'; // Import journalService
 
 type Mood = 'happy' | 'neutral' | 'sad' | 'joyful' | 'angry';
 
@@ -31,16 +31,23 @@ const MoodQuickCheck: React.FC = () => {
     setSelectedMood(mood);
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('mood_entries')
-        .insert({
-          user_id: user.id,
-          mood_key: mood,
-          note: null, // No note for quick check-in
-        });
+      const newEntry = await journalService.createEntry({
+        user_id: user.id,
+        session_type: 'quick_checkin',
+        mood_rating: moods.find(m => m.key === mood)?.label === 'Joyful' ? 10 :
+                     moods.find(m => m.key === mood)?.label === 'Happy' ? 8 :
+                     moods.find(m => m.key === mood)?.label === 'Neutral' ? 5 :
+                     moods.find(m => m.key === mood)?.label === 'Sad' ? 3 :
+                     moods.find(m => m.key === mood)?.label === 'Angry' ? 1 : null,
+        conversation: [],
+        ai_analysis: null,
+        is_encrypted: false,
+        sync_status: navigator.onLine ? 'synced' : 'pending',
+        entry_text: `Quick mood check-in: ${mood.charAt(0).toUpperCase() + mood.slice(1)}.`,
+        tags: ['mood_checkin', mood],
+      });
 
-      if (error) {
-        console.error("Error saving mood entry:", error);
+      if (!newEntry) {
         toast.error("Failed to save mood. Please try again.");
       } else {
         toast.success(`You selected: ${mood.charAt(0).toUpperCase() + mood.slice(1)}! Your mood has been recorded.`);
