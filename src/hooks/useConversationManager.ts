@@ -25,6 +25,8 @@ interface ConversationState {
   isOffline: boolean;
   queuedResponses: string[]; // For offline responses
   currentEntryId: string | null; // Track the ID of the current journal entry
+  isSaving: boolean; // New state for auto-save feedback
+  isPaused: boolean; // New state for session pause
 }
 
 const MAX_QUESTIONS_MAP: Record<SessionType, number> = {
@@ -80,9 +82,49 @@ export const useConversationManager = () => {
     isOffline: !navigator.onLine,
     queuedResponses: [],
     currentEntryId: null,
+    isSaving: false,
+    isPaused: false,
   });
 
   const autoSaveIntervalRef = useRef<number | null>(null);
+
+  // Function to save the current entry
+  const saveEntry = useCallback(async (status: 'pending' | 'synced' | 'paused') => {
+    if (!user || !state.currentEntryId) {
+      console.warn("Cannot save entry: User not authenticated or entry ID missing.");
+      return;
+    }
+
+    setState(s => ({ ...s, isSaving: true }));
+    try {
+      const { error } = await supabase
+        .from('journal_entries')
+        .update({
+          session_type: state.sessionType,
+          mood_rating: state.currentMood,
+          conversation: state.conversationHistory,
+          ai_analysis: state.aiAnalysis ? { text: state.aiAnalysis } : {},
+          is_encrypted: false,
+          sync_status: state.isOffline ? 'pending' : status,
+          updated_at: new Date().toISOString(),
+          entry_text: state.entryText, // Save the full entry text
+        })
+        .eq('id', state.currentEntryId);
+
+      if (error) {
+        console.error("Error saving entry:", error);
+        showError("Auto-save failed!");
+      } else {
+        console.log("Entry saved successfully.");
+      }
+    } catch (err) {
+      console.error("Unexpected error saving entry:", err);
+      showError("An unexpected error occurred while saving your entry.");
+    } finally {
+      setState(s => ({ ...s, isSaving: false }));
+    }
+  }, [user, state.currentEntryId, state.sessionType, state.currentMood, state.conversationHistory, state.aiAnalysis, state.isOffline, state.entryText]);
+
 
   useEffect(() => {
     const handleOnline = () => setState(s => ({ ...s, isOffline: false }));
@@ -99,29 +141,11 @@ export const useConversationManager = () => {
 
   // Auto-save effect
   useEffect(() => {
-    if (state.isSessionActive && state.entryText.length > 0 && user && state.currentEntryId) {
-      autoSaveIntervalRef.current = window.setInterval(async () => {
-        const { error } = await supabase
-          .from('journal_entries')
-          .update({
-            session_type: state.sessionType,
-            mood_rating: state.currentMood,
-            conversation: state.conversationHistory,
-            ai_analysis: state.aiAnalysis ? { text: state.aiAnalysis } : {},
-            is_encrypted: false,
-            sync_status: 'pending',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', state.currentEntryId);
-
-        if (error) {
-          console.error("Error auto-saving entry:", error);
-          showError("Auto-save failed!");
-        } else {
-          console.log("Auto-saving entry:", state.entryText.substring(0, 100) + "...");
-          showSuccess("Entry auto-saved!");
-        }
-      }, 30000);
+    if (state.isSessionActive && state.entryText.length > 0 && user && state.currentEntryId && !state.isPaused) {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+      autoSaveIntervalRef.current = window.setInterval(() => saveEntry('pending'), 30000); // Auto-save every 30 seconds
     } else {
       if (autoSaveIntervalRef.current) {
         clearInterval(autoSaveIntervalRef.current);
@@ -132,7 +156,7 @@ export const useConversationManager = () => {
         clearInterval(autoSaveIntervalRef.current);
       }
     };
-  }, [state.isSessionActive, state.entryText, state.sessionType, state.currentMood, state.conversationHistory, state.aiAnalysis, user, state.currentEntryId]);
+  }, [state.isSessionActive, state.entryText, user, state.currentEntryId, state.isPaused, saveEntry]);
 
   const addMessageToHistory = useCallback((role: 'user' | 'model', text: string) => {
     setState(s => ({
@@ -159,7 +183,7 @@ export const useConversationManager = () => {
   }, [state.isOffline]);
 
   const endSession = useCallback(async () => {
-    setState(s => ({ ...s, isLoadingAI: true, isSessionActive: false }));
+    setState(s => ({ ...s, isLoadingAI: true, isSessionActive: false, isPaused: false }));
     if (autoSaveIntervalRef.current) {
       clearInterval(autoSaveIntervalRef.current);
     }
@@ -182,28 +206,10 @@ export const useConversationManager = () => {
     addMessageToHistory('model', `Session ended. Here's a summary of your entry: ${finalAnalysis}`);
     
     if (user && state.currentEntryId) {
-      const { error } = await supabase
-        .from('journal_entries')
-        .update({
-          session_type: state.sessionType,
-          mood_rating: state.currentMood,
-          conversation: state.conversationHistory,
-          ai_analysis: { text: finalAnalysis },
-          is_encrypted: false,
-          sync_status: state.isOffline ? 'pending' : 'synced',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', state.currentEntryId);
-
-      if (error) {
-        console.error("Error saving final journal entry:", error);
-        showError("Failed to save journal entry!");
-      } else {
-        showSuccess("Journaling session ended and entry saved!");
-      }
+      await saveEntry(state.isOffline ? 'pending' : 'synced');
+      showSuccess("Journaling session ended and entry saved!");
     } else if (user && !state.currentEntryId) {
-      // This case should ideally not happen if startSession works correctly,
-      // but as a fallback, insert if no ID was tracked.
+      // Fallback: if no ID was tracked, insert as a new entry
       const { error } = await supabase
         .from('journal_entries')
         .insert({
@@ -214,6 +220,7 @@ export const useConversationManager = () => {
           ai_analysis: { text: finalAnalysis },
           is_encrypted: false,
           sync_status: state.isOffline ? 'pending' : 'synced',
+          entry_text: state.entryText,
         });
       if (error) {
         console.error("Error saving fallback journal entry:", error);
@@ -224,7 +231,81 @@ export const useConversationManager = () => {
     } else {
       showError("User not authenticated. Cannot save journal entry.");
     }
-  }, [state.entryText, state.isOffline, state.sessionType, state.currentMood, state.conversationHistory, addMessageToHistory, user, state.currentEntryId]);
+  }, [state.entryText, state.isOffline, state.sessionType, state.currentMood, state.conversationHistory, addMessageToHistory, user, state.currentEntryId, saveEntry]);
+
+  const discardSession = useCallback(async () => {
+    if (!user || !state.currentEntryId) {
+      showError("No active session to discard or user not authenticated.");
+      return;
+    }
+
+    setState(s => ({ ...s, isLoadingAI: true }));
+    if (autoSaveIntervalRef.current) {
+      clearInterval(autoSaveIntervalRef.current);
+    }
+
+    try {
+      const { error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', state.currentEntryId)
+        .eq('user_id', user.id); // Ensure only the user's own entry is deleted
+
+      if (error) {
+        console.error("Error discarding journal entry:", error);
+        showError("Failed to discard session. Please try again.");
+      } else {
+        showSuccess("Journaling session discarded.");
+        setState({
+          currentMood: null,
+          sessionType: null,
+          conversationHistory: [],
+          currentQuestion: '',
+          entryText: '',
+          questionCount: 0,
+          maxQuestions: 0,
+          isSessionActive: false,
+          isLoadingAI: false,
+          aiAnalysis: null,
+          isOffline: !navigator.onLine,
+          queuedResponses: [],
+          currentEntryId: null,
+          isSaving: false,
+          isPaused: false,
+        });
+      }
+    } catch (err) {
+      console.error("Unexpected error discarding session:", err);
+      showError("An unexpected error occurred while discarding your session.");
+    } finally {
+      setState(s => ({ ...s, isLoadingAI: false }));
+    }
+  }, [user, state.currentEntryId]);
+
+  const pauseSession = useCallback(async () => {
+    if (!state.isSessionActive) return;
+
+    setState(s => ({ ...s, isPaused: true }));
+    if (autoSaveIntervalRef.current) {
+      clearInterval(autoSaveIntervalRef.current);
+    }
+    await saveEntry('paused');
+    showSuccess("Session paused. Your progress has been saved.");
+  }, [state.isSessionActive, saveEntry]);
+
+  const resumeSession = useCallback(async () => {
+    if (!state.isPaused) return;
+
+    setState(s => ({ ...s, isPaused: false }));
+    showSuccess("Session resumed!");
+    // Restart auto-save timer
+    if (state.entryText.length > 0 && user && state.currentEntryId) {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+      autoSaveIntervalRef.current = window.setInterval(() => saveEntry('pending'), 30000);
+    }
+  }, [state.isPaused, state.entryText, user, state.currentEntryId, saveEntry]);
 
 
   const startSession = useCallback(async (mood: number, sessionType: SessionType) => {
@@ -233,7 +314,7 @@ export const useConversationManager = () => {
       return;
     }
 
-    setState(s => ({ ...s, isLoadingAI: true, currentMood: mood, sessionType, maxQuestions: MAX_QUESTIONS_MAP[sessionType], isSessionActive: true, conversationHistory: [], entryText: '', questionCount: 0, aiAnalysis: null, currentEntryId: null }));
+    setState(s => ({ ...s, isLoadingAI: true, currentMood: mood, sessionType, maxQuestions: MAX_QUESTIONS_MAP[sessionType], isSessionActive: true, conversationHistory: [], entryText: '', questionCount: 0, aiAnalysis: null, currentEntryId: null, isSaving: false, isPaused: false }));
     addMessageToHistory('model', `Let's start your ${sessionType.replace('_', ' ')}!`);
 
     // Create initial entry in Supabase to get an ID
@@ -247,6 +328,7 @@ export const useConversationManager = () => {
         ai_analysis: {},
         is_encrypted: false,
         sync_status: 'pending',
+        entry_text: '', // Initialize with empty text
       })
       .select('id')
       .single();
@@ -272,7 +354,7 @@ export const useConversationManager = () => {
   }, [addMessageToHistory, getNextQuestion, user]);
 
   const processUserResponse = useCallback(async (userResponse: string) => {
-    if (!state.isSessionActive || !state.currentMood) return;
+    if (!state.isSessionActive || !state.currentMood || state.isPaused) return;
 
     addMessageToHistory('user', userResponse);
     setState(s => ({ ...s, entryText: s.entryText + (s.entryText ? '\n\n' : '') + userResponse, isLoadingAI: true }));
@@ -296,10 +378,10 @@ export const useConversationManager = () => {
     } else {
       endSession();
     }
-  }, [state.isSessionActive, state.currentMood, state.entryText, state.questionCount, state.maxQuestions, state.isOffline, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession]);
+  }, [state.isSessionActive, state.currentMood, state.entryText, state.questionCount, state.maxQuestions, state.isOffline, state.isPaused, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession]);
 
   const skipQuestion = useCallback(async () => {
-    if (!state.isSessionActive || !state.currentMood) return;
+    if (!state.isSessionActive || !state.currentMood || state.isPaused) return;
 
     showSuccess("Question skipped.");
     setState(s => ({ ...s, isLoadingAI: true }));
@@ -311,7 +393,7 @@ export const useConversationManager = () => {
     } else {
       endSession();
     }
-  }, [state.isSessionActive, state.currentMood, state.questionCount, state.maxQuestions, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession]);
+  }, [state.isSessionActive, state.currentMood, state.questionCount, state.maxQuestions, state.isPaused, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession]);
 
   return {
     ...state,
@@ -319,6 +401,10 @@ export const useConversationManager = () => {
     processUserResponse,
     skipQuestion,
     endSession,
+    discardSession,
+    pauseSession,
+    resumeSession,
     addMessageToHistory,
+    saveEntry, // Expose saveEntry for manual saves if needed
   };
 };
