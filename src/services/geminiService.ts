@@ -152,7 +152,7 @@ export async function analyzeResponse(response: string): Promise<string> {
  * @param conversation An array of message objects with role and parts.
  * @returns A promise that resolves to a follow-up question string.
  */
-export async function suggestFollowUp(conversation: { role: string; parts: string }[]): Promise<string> {
+export async function suggestFollowUp(conversation: { role: string; parts: { text: string }[] }[]): Promise<string> {
   if (!navigator.onLine) {
     return "You are offline. Unable to suggest a follow-up question.";
   }
