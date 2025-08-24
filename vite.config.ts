@@ -68,9 +68,22 @@ export default defineConfig(() => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Add a custom service worker file to handle push events
+        swDest: 'dist/sw.js',
+        additionalManifestEntries: [
+          { url: '/index.html', revision: '0.fea8j4hdq18' }, // Ensure index.html is precached
+        ],
       },
       devOptions: {
         enabled: true,
+      },
+      // Custom service worker code for push notifications
+      injectManifest: {
+        injectionPoint: undefined, // No specific injection point needed for this custom SW
+        // This will be the custom service worker file
+        // The `swSrc` file will be copied to `swDest` and Workbox will inject its precache manifest into it.
+        // We'll create a simple `sw.ts` file for this.
+        swSrc: 'src/sw.ts', 
       },
     })
   ],
