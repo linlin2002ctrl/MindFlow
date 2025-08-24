@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Easing, Variants } from 'framer-motion'; // Import Easing and Variants
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,15 +19,15 @@ const getMoodEmoji = (mood: number) => {
 };
 
 // Animation variants for questions and messages
-const questionVariants = {
+const questionVariants: Variants = { // Explicitly type as Variants
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.8, 0.5, 1] } }, // Changed ease to cubic-bezier array
-  exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: [0.42, 0, 1, 1] } }, // Changed ease to cubic-bezier array
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as Easing } }, // Cast to Easing
+  exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: "easeIn" as Easing } }, // Cast to Easing
 };
 
-const messageVariants = {
+const messageVariants: Variants = { // Explicitly type as Variants
   hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.8, 0.5, 1] } }, // Changed ease to cubic-bezier array
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" as Easing } }, // Cast to Easing
 };
 
 const JournalSession: React.FC = () => {
@@ -57,8 +57,8 @@ const JournalSession: React.FC = () => {
   // Auto-expanding textarea logic
   useEffect(() => {
     if (textareaRef.current) {
-      textarea.current.style.height = 'auto';
-      textarea.current.style.height = textareaRef.current.scrollHeight + 'px';
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [userResponse]);
 
