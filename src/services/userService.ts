@@ -41,7 +41,7 @@ export const userService = {
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('profiles').select('*').eq('id', userId).single()
+          await supabase.from('profiles').select('*').eq('id', userId).maybeSingle() // Changed to maybeSingle()
         );
         if (error) throw error;
         if (data) {
@@ -97,7 +97,7 @@ export const userService = {
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('user_preferences').select('*').eq('user_id', userId).single()
+          await supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle() // Changed to maybeSingle()
         );
         if (error) throw error;
         if (data) {
