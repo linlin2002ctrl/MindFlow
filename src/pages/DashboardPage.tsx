@@ -7,6 +7,7 @@ import MoodQuickCheck from '@/components/dashboard/MoodQuickCheck.tsx';
 import RecentEntries from '@/components/dashboard/RecentEntries.tsx';
 import MoodChart from '@/components/dashboard/MoodChart.tsx';
 import GlassCard from '@/components/GlassCard'; // Re-import GlassCard for general use
+import InstallPWAButton from '@/components/InstallPWAButton'; // Import the new component
 
 const encouragingMessages = [
   "Every entry is a step towards self-discovery!",
@@ -35,6 +36,9 @@ const DashboardPage: React.FC = () => {
       <div className="w-full max-w-4xl space-y-6">
         {/* Welcome Message */}
         <WelcomeCard userName="MindFlow User" />
+
+        {/* Install PWA Button (conditionally rendered) */}
+        <InstallPWAButton />
 
         {/* Quick Start Journaling Button */}
         <Link to="/journal" className="block w-full">
