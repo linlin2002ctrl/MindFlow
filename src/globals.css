@@ -88,26 +88,31 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-}
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+  @layer base {
+    * {
+      @apply border-border;
+    }
 
-  body {
-    @apply bg-background text-foreground;
-  }
+    body {
+      @apply bg-background text-foreground;
+      /* Apply safe area insets to the body for overall layout */
+      padding-top: env(safe-area-inset-top);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+    }
 
-  /* Full-screen mode for JournalSession on small screens */
-  .full-screen-mode {
-    @apply w-full h-full max-w-none rounded-none shadow-none border-none;
-  }
-
-  /* Adjust padding for the main content area on mobile when bottom nav is present */
-  @media (max-width: 767px) {
+    /* Full-screen mode for JournalSession on small screens */
     .full-screen-mode {
-      @apply p-4; /* Adjust padding as needed */
+      @apply w-full h-full max-w-none rounded-none shadow-none border-none;
+    }
+
+    /* Adjust padding for the main content area on mobile when bottom nav is present */
+    @media (max-width: 767px) {
+      .full-screen-mode {
+        @apply p-4; /* Adjust padding as needed */
+      }
     }
   }
 }

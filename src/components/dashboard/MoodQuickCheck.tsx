@@ -47,6 +47,7 @@ const MoodQuickCheck: React.FC = () => {
         toast.error("Failed to save mood. Please try again.");
       } else {
         toast.success(`You selected: ${mood.charAt(0).toUpperCase() + mood.slice(1)}! Your mood has been recorded.`);
+        if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
       }
     } catch (err) {
       console.error("Unexpected error saving mood:", err);

@@ -81,6 +81,7 @@ const GoalManager: React.FC = () => {
         if (updatedGoal) {
           toast.success("Goal updated successfully!");
           setGoals(goals.map(g => (g.id === editingGoalId ? { ...g, ...updatedGoal } : g)));
+          if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
         } else {
           toast.error("Failed to update goal.");
         }
@@ -95,6 +96,7 @@ const GoalManager: React.FC = () => {
         if (createdGoal) {
           toast.success("Goal created successfully!");
           setGoals(prev => [createdGoal, ...prev]);
+          if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
         } else {
           toast.error("Failed to create goal.");
         }
@@ -109,6 +111,7 @@ const GoalManager: React.FC = () => {
   };
 
   const handleEdit = (goal: UserGoal) => {
+    if (navigator.vibrate) navigator.vibrate(30); // Haptic feedback
     setEditingGoalId(goal.id);
     setNewGoal({
       title: goal.title,
@@ -127,6 +130,7 @@ const GoalManager: React.FC = () => {
       if (deleted) {
         toast.success("Goal deleted successfully!");
         setGoals(goals.filter(g => g.id !== goalId));
+        if (navigator.vibrate) navigator.vibrate(70); // Haptic feedback for deletion
       } else {
         toast.error("Failed to delete goal.");
       }
@@ -147,6 +151,7 @@ const GoalManager: React.FC = () => {
     if (updatedGoal) {
       setGoals(goals.map(g => (g.id === goalId ? { ...g, progress: newProgress } : g)));
       toast.success("Goal progress updated!");
+      if (navigator.vibrate) navigator.vibrate(30); // Haptic feedback
     } else {
       toast.error("Failed to update progress.");
     }
@@ -160,8 +165,9 @@ const GoalManager: React.FC = () => {
     const updatedGoal = await goalsService.updateGoal(goalId, { status: newStatus });
     if (updatedGoal) {
       toast.success(`Goal marked as ${newStatus}!`);
-      setGoals(goals.filter(g => g.id !== goalId)); // Remove from current tab
+      setGoals(goals.filter(g => g.id !== activeTab)); // Remove from current tab
       fetchGoals(activeTab); // Re-fetch to update list if needed
+      if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
     } else {
       toast.error("Failed to update goal status.");
     }
