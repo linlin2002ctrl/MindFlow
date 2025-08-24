@@ -5,14 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import AppLayout from "./components/layout/AppLayout"; // Changed from Layout to AppLayout
+import AppLayout from "./components/layout/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
 import JournalPage from "./pages/JournalPage";
 import MoodTrackerPage from "./pages/MoodTrackerPage";
 import AIConversationPage from "./pages/AIConversationPage";
 import InsightsPage from "./pages/InsightsPage";
 import LoginPage from "./pages/LoginPage";
-import SettingsPage from "./pages/SettingsPage"; // Import the new SettingsPage
+import SettingsPage from "./pages/SettingsPage";
+import GoalsPage from "./pages/GoalsPage"; // Import the new GoalsPage
 import { SessionContextProvider } from "./contexts/SessionContext";
 
 const queryClient = new QueryClient();
@@ -29,7 +30,7 @@ const App = () => (
             <Route
               path="*"
               element={
-                <AppLayout> {/* Wrap all main app routes with AppLayout */}
+                <AppLayout>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/dashboard" element={<DashboardPage />} />
@@ -37,7 +38,8 @@ const App = () => (
                     <Route path="/mood-tracker" element={<MoodTrackerPage />} />
                     <Route path="/ai-conversation" element={<AIConversationPage />} />
                     <Route path="/insights" element={<InsightsPage />} />
-                    <Route path="/settings" element={<SettingsPage />} /> {/* Add the settings page route */}
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/goals" element={<GoalsPage />} /> {/* Add the goals page route */}
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

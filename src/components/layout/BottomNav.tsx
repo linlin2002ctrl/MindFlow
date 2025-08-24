@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Book, BarChart, Settings } from 'lucide-react';
+import { Home, Book, BarChart, Settings, Target } from 'lucide-react'; // Added Target icon
 import { cn } from '@/lib/utils';
 
 const BottomNav: React.FC = () => {
@@ -10,6 +10,7 @@ const BottomNav: React.FC = () => {
     { path: '/dashboard', icon: Home, label: 'Home' },
     { path: '/journal', icon: Book, label: 'Journal' },
     { path: '/insights', icon: BarChart, label: 'Insights' },
+    { path: '/goals', icon: Target, label: 'Goals' }, // Added Goals link
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 

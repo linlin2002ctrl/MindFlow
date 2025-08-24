@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Book, Smile, MessageSquare, BarChart, Settings, UserCircle } from 'lucide-react';
+import { Home, Book, Smile, MessageSquare, BarChart, Settings, UserCircle, Target } from 'lucide-react'; // Added Target icon
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { useSession } from '@/contexts/SessionContext'; // Import useSession
-import { userService, Profile } from '@/services/userService'; // Import userService and Profile type
+import { useSession } from '@/contexts/SessionContext';
+import { userService, Profile } from '@/services/userService';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { user } = useSession(); // Get the current user
+  const { user } = useSession();
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -29,6 +29,7 @@ const Sidebar: React.FC = () => {
     { path: '/mood-tracker', icon: Smile, label: 'Mood Tracker' },
     { path: '/ai-conversation', icon: MessageSquare, label: 'AI Conversation' },
     { path: '/insights', icon: BarChart, label: 'Insights' },
+    { path: '/goals', icon: Target, label: 'Goals' }, // Added Goals link with Target icon
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 

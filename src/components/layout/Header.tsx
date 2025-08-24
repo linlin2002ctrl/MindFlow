@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useSession } from '@/contexts/SessionContext'; // Import useSession
-import { userService, Profile } from '@/services/userService'; // Import userService and Profile type
+import { useSession } from '@/contexts/SessionContext';
+import { userService, Profile } from '@/services/userService';
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -14,7 +14,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const isMobile = useIsMobile();
-  const { user } = useSession(); // Get the current user
+  const { user } = useSession();
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -57,6 +57,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
                 <Link to="/mood-tracker" className="text-lg hover:text-mindflow-blue transition-colors">Mood Tracker</Link>
                 <Link to="/ai-conversation" className="text-lg hover:text-mindflow-blue transition-colors">AI Conversation</Link>
                 <Link to="/insights" className="text-lg hover:text-mindflow-blue transition-colors">Insights</Link>
+                <Link to="/goals" className="text-lg hover:text-mindflow-blue transition-colors">Goals</Link> {/* Added Goals link */}
                 <Link to="/settings" className="text-lg hover:text-mindflow-blue transition-colors">Settings</Link>
               </nav>
             </SheetContent>
