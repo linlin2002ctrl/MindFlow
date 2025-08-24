@@ -98,4 +98,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Full-screen mode for JournalSession on small screens */
+  .full-screen-mode {
+    @apply w-full h-full max-w-none rounded-none shadow-none border-none;
+  }
+
+  /* Adjust padding for the main content area on mobile when bottom nav is present */
+  @media (max-width: 767px) {
+    .full-screen-mode {
+      @apply p-4; /* Adjust padding as needed */
+    }
+  }
 }
