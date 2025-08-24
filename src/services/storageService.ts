@@ -17,7 +17,7 @@ const USER_PROFILES_STORE = 'userProfiles';
 const AI_INSIGHTS_STORE = 'aiInsights';
 
 let db: IDBPDatabase | null = null;
-let encryptionKey: CryptoKey | null = null;
+// Removed global encryptionKey: let encryptionKey: CryptoKey | null = null;
 
 // --- IndexedDB Initialization ---
 async function initDB(): Promise<IDBPDatabase> {
@@ -57,9 +57,8 @@ const ENCRYPTION_ALGORITHM = 'AES-GCM';
 const ENCRYPTION_KEY_LENGTH = 256;
 const IV_LENGTH = 12; // 96-bit IV for AES-GCM
 
+// Modified getEncryptionKey to always derive a new key for the given userId
 async function getEncryptionKey(userId: string): Promise<CryptoKey> {
-  if (encryptionKey) return encryptionKey;
-
   // Derive a key from a combination of a fixed app secret and user ID
   // For a real-world app, consider a more robust key management strategy
   // involving user passwords or server-side key distribution.
@@ -74,7 +73,7 @@ async function getEncryptionKey(userId: string): Promise<CryptoKey> {
     ['deriveKey']
   );
 
-  encryptionKey = await crypto.subtle.deriveKey(
+  const derivedKey = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: salt,
@@ -87,7 +86,7 @@ async function getEncryptionKey(userId: string): Promise<CryptoKey> {
     ['encrypt', 'decrypt']
   );
 
-  return encryptionKey;
+  return derivedKey;
 }
 
 async function encryptData(data: string, userId: string): Promise<string> {
@@ -371,22 +370,3 @@ export const storageService = {
     console.log("Cleanup old data: Not yet implemented.");
   },
 };
-
-// The index creation logic has been moved into the upgrade function.
-// This block is no longer needed and can be removed.
-/*
-initDB().then(database => {
-  if (!database.objectStoreNames.contains(JOURNAL_ENTRIES_STORE)) {
-    // This case should ideally not happen if initDB is called correctly
-    // before any operations, but as a safeguard:
-    console.warn("Journal entries store not found during index creation attempt.");
-  } else {
-    const tx = database.transaction(JOURNAL_ENTRIES_STORE, 'versionchange');
-    const store = tx.objectStore(JOURNAL_ENTRIES_STORE);
-    if (!store.indexNames.contains('sync_status')) {
-      store.createIndex('sync_status', 'sync_status', { unique: false });
-    }
-    tx.done.catch(err => console.error("Error creating sync_status index:", err));
-  }
-}).catch(err => console.error("Failed to initialize DB for index creation:", err));
-*/
