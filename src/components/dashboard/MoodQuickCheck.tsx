@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useSession } from '@/contexts/SessionContext';
 import { journalService } from '@/services/journalService'; // Import journalService
 
-type Mood = 'happy' | 'neutral' | 'sad' | 'joyful' | 'angry';
+type Mood = 'joyful' | 'happy' | 'neutral' | 'sad' | 'angry';
 
 const MoodQuickCheck: React.FC = () => {
   const { user } = useSession();
@@ -15,11 +15,11 @@ const MoodQuickCheck: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const moods = [
-    { key: 'joyful', icon: Laugh, label: 'Joyful', color: 'text-yellow-300' },
-    { key: 'happy', icon: Smile, label: 'Happy', color: 'text-green-400' },
-    { key: 'neutral', icon: Meh, label: 'Neutral', color: 'text-blue-300' },
-    { key: 'sad', icon: Frown, label: 'Sad', color: 'text-indigo-300' },
-    { key: 'angry', icon: Angry, label: 'Angry', color: 'text-red-400' },
+    { key: 'joyful', icon: Laugh, label: 'Joyful', color: 'text-yellow-300', rating: 10 },
+    { key: 'happy', icon: Smile, label: 'Happy', color: 'text-green-400', rating: 8 },
+    { key: 'neutral', icon: Meh, label: 'Neutral', color: 'text-blue-300', rating: 5 },
+    { key: 'sad', icon: Frown, label: 'Sad', color: 'text-indigo-300', rating: 3 },
+    { key: 'angry', icon: Angry, label: 'Angry', color: 'text-red-400', rating: 1 },
   ];
 
   const handleMoodSelect = async (mood: Mood) => {
@@ -31,18 +31,14 @@ const MoodQuickCheck: React.FC = () => {
     setSelectedMood(mood);
     setIsSaving(true);
     try {
+      const moodRating = moods.find(m => m.key === mood)?.rating || null;
+
       const newEntry = await journalService.createEntry({
         user_id: user.id,
         session_type: 'quick_checkin',
-        mood_rating: moods.find(m => m.key === mood)?.label === 'Joyful' ? 10 :
-                     moods.find(m => m.key === mood)?.label === 'Happy' ? 8 :
-                     moods.find(m => m.key === mood)?.label === 'Neutral' ? 5 :
-                     moods.find(m => m.key === mood)?.label === 'Sad' ? 3 :
-                     moods.find(m => m.key === mood)?.label === 'Angry' ? 1 : null,
+        mood_rating: moodRating,
         conversation: [],
         ai_analysis: null,
-        is_encrypted: false,
-        sync_status: navigator.onLine ? 'synced' : 'pending',
         entry_text: `Quick mood check-in: ${mood.charAt(0).toUpperCase() + mood.slice(1)}.`,
         tags: ['mood_checkin', mood],
       });

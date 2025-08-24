@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { generateQuestion, analyzeResponse, suggestFollowUp } from '@/services/geminiService';
 import { showSuccess, showError } from '@/utils/toast';
 import { useSession } from '@/contexts/SessionContext';
-import { journalService, JournalEntry } from '@/services/journalService'; // Import journalService
-import { syncService } from '@/services/syncService'; // Import syncService
+import { journalService, JournalEntry } from '@/services/journalService';
+import { syncService } from '@/services/syncService';
+import { storageService } from '@/services/storageService'; // Import storageService
 
 export type SessionType = 'quick_checkin' | 'standard_session' | 'deep_dive';
 
@@ -61,7 +62,12 @@ const OFFLINE_QUESTIONS = {
   ],
 };
 
-const getOfflineQuestion = (mood: number): string => {
+const getOfflineQuestion = async (mood: number): Promise<string> => {
+  const cachedQuestions = await storageService.getAIQuestions();
+  if (cachedQuestions.length > 0) {
+    return cachedQuestions[Math.floor(Math.random() * cachedQuestions.length)];
+  }
+
   if (mood >= 8) return OFFLINE_QUESTIONS.high[Math.floor(Math.random() * OFFLINE_QUESTIONS.high.length)];
   if (mood >= 5) return OFFLINE_QUESTIONS.medium[Math.floor(Math.random() * OFFLINE_QUESTIONS.medium.length)];
   return OFFLINE_QUESTIONS.low[Math.floor(Math.random() * OFFLINE_QUESTIONS.low.length)];
@@ -103,10 +109,10 @@ export const useConversationManager = () => {
         mood_rating: state.currentMood,
         conversation: state.conversationHistory,
         ai_analysis: state.aiAnalysis ? { text: state.aiAnalysis } : null,
-        is_encrypted: false,
-        sync_status: state.isOffline ? 'pending' : status,
+        is_encrypted: false, // storageService handles encryption
+        sync_status: status,
         entry_text: state.entryText,
-      });
+      }, user.id);
 
       if (!updatedEntry) {
         showError("Auto-save failed!");
@@ -119,7 +125,7 @@ export const useConversationManager = () => {
     } finally {
       setState(s => ({ ...s, isSaving: false }));
     }
-  }, [user, state.currentEntryId, state.sessionType, state.currentMood, state.conversationHistory, state.aiAnalysis, state.isOffline, state.entryText]);
+  }, [user, state.currentEntryId, state.sessionType, state.currentMood, state.conversationHistory, state.aiAnalysis, state.entryText]);
 
 
   useEffect(() => {
@@ -195,17 +201,19 @@ export const useConversationManager = () => {
     }
 
     let finalAnalysis = "No analysis available.";
-    if (state.entryText.trim() && !state.isOffline) {
-      try {
-        finalAnalysis = await analyzeResponse(state.entryText);
-        showSuccess("AI analysis complete!");
-      } catch (error) {
-        console.error("Error during final AI analysis:", error);
-        showError("Couldn't get AI analysis. Please try again later.");
-        finalAnalysis = "I'm having trouble analyzing your entry right now. Please try again later.";
+    if (state.entryText.trim()) {
+      if (!state.isOffline) {
+        try {
+          finalAnalysis = await analyzeResponse(state.entryText);
+          showSuccess("AI analysis complete!");
+        } catch (error) {
+          console.error("Error during final AI analysis:", error);
+          showError("Couldn't get AI analysis. Please try again later.");
+          finalAnalysis = "I'm having trouble analyzing your entry right now. Please try again later.";
+        }
+      } else {
+        finalAnalysis = "You are offline. Your entry will be analyzed when you're back online.";
       }
-    } else if (state.isOffline) {
-      finalAnalysis = "You are offline. Your entry will be analyzed when you're back online.";
     }
 
     setState(s => ({ ...s, aiAnalysis: finalAnalysis, isLoadingAI: false }));
@@ -216,13 +224,12 @@ export const useConversationManager = () => {
       showSuccess("Journaling session ended and entry saved!");
     } else if (user && !state.currentEntryId) {
       // Fallback: if no ID was tracked, insert as a new entry
-      const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'> = {
+      const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'> = {
         user_id: user.id,
         session_type: state.sessionType || 'standard_session', // Default if null
         mood_rating: state.currentMood,
         conversation: state.conversationHistory,
         ai_analysis: { text: finalAnalysis },
-        is_encrypted: false,
         sync_status: state.isOffline ? 'pending' : 'synced',
         entry_text: state.entryText,
         tags: null,
@@ -311,15 +318,14 @@ export const useConversationManager = () => {
     setState(s => ({ ...s, isLoadingAI: true, currentMood: mood, sessionType, maxQuestions: MAX_QUESTIONS_MAP[sessionType], isSessionActive: true, conversationHistory: [], entryText: '', questionCount: 0, aiAnalysis: null, currentEntryId: null, isSaving: false, isPaused: false }));
     addMessageToHistory('model', `Let's start your ${sessionType.replace('_', ' ')}!`);
 
-    // Create initial entry in Supabase to get an ID
-    const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'> = {
+    // Create initial entry via journalService (handles local/remote)
+    const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'> = {
       user_id: user.id,
       session_type: sessionType,
       mood_rating: mood,
       conversation: [],
       ai_analysis: null,
-      is_encrypted: false,
-      sync_status: 'pending',
+      sync_status: navigator.onLine ? 'synced' : 'pending',
       entry_text: '',
       tags: null,
     };
@@ -351,18 +357,6 @@ export const useConversationManager = () => {
     addMessageToHistory('user', userResponse);
     setState(s => ({ ...s, entryText: s.entryText + (s.entryText ? '\n\n' : '') + userResponse, isLoadingAI: true }));
 
-    if (state.isOffline) {
-      setState(s => ({ ...s, queuedResponses: [...s.queuedResponses, userResponse] }));
-      if (state.questionCount < state.maxQuestions) {
-        const nextOfflineQuestion = getOfflineQuestion(state.currentMood);
-        setState(s => ({ ...s, currentQuestion: nextOfflineQuestion, questionCount: s.questionCount + 1, isLoadingAI: false }));
-        addMessageToHistory('model', nextOfflineQuestion);
-      } else {
-        endSession();
-      }
-      return;
-    }
-
     if (state.questionCount < state.maxQuestions) {
       const nextQuestion = await getNextQuestion(state.currentMood, state.conversationHistory);
       setState(s => ({ ...s, currentQuestion: nextQuestion, questionCount: s.questionCount + 1, isLoadingAI: false }));
@@ -370,7 +364,7 @@ export const useConversationManager = () => {
     } else {
       endSession();
     }
-  }, [state.isSessionActive, state.currentMood, state.entryText, state.questionCount, state.maxQuestions, state.isOffline, state.isPaused, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession]);
+  }, [state.isSessionActive, state.currentMood, state.entryText, state.questionCount, state.maxQuestions, state.isPaused, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession]);
 
   const skipQuestion = useCallback(async () => {
     if (!state.isSessionActive || !state.currentMood || state.isPaused) return;

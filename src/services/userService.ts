@@ -1,6 +1,7 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { showError } from '@/utils/toast';
+import { storageService } from './storageService'; // Import storageService
 
 export interface Profile {
   id: string;
@@ -29,80 +30,114 @@ export interface UserPreferences {
 
 export const userService = {
   /**
-   * Fetches the current user's profile.
+   * Fetches the current user's profile, prioritizing local cache.
    * @param {string} userId
    * @returns {Promise<Profile | null>}
    */
   getProfile: async (userId: string): Promise<Profile | null> => {
-    try {
-      const { data, error } = await withSupabaseRetry(async () => // Added async and await
-        await supabase.from('profiles').select('*').eq('id', userId).single()
-      );
-      if (error) throw error;
-      return data;
-    } catch (error: any) {
-      console.error("Error fetching user profile:", error.message);
-      showError(`Failed to fetch profile: ${error.message}`);
-      return null;
+    const localProfile = await storageService.getUserProfile(userId);
+    if (localProfile) return localProfile;
+
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await withSupabaseRetry(async () =>
+          await supabase.from('profiles').select('*').eq('id', userId).single()
+        );
+        if (error) throw error;
+        if (data) {
+          await storageService.cacheUserProfile(data);
+        }
+        return data;
+      } catch (error: any) {
+        console.error("Error fetching user profile from Supabase:", error.message);
+        showError(`Failed to fetch profile from cloud: ${error.message}`);
+        return null;
+      }
     }
+    return null;
   },
 
   /**
-   * Updates the current user's profile.
+   * Updates the current user's profile, updating locally and then syncing.
    * @param {string} userId
    * @param {Partial<Omit<Profile, 'id' | 'updated_at'>>} updateData
    * @returns {Promise<Profile | null>}
    */
   updateProfile: async (userId: string, updateData: Partial<Omit<Profile, 'id' | 'updated_at'>>): Promise<Profile | null> => {
-    try {
-      const { data, error } = await withSupabaseRetry(async () => // Added async and await
-        await supabase.from('profiles').update(updateData).eq('id', userId).select().single()
-      );
-      if (error) throw error;
-      return data;
-    } catch (error: any) {
-      console.error("Error updating user profile:", error.message);
-      showError(`Failed to update profile: ${error.message}`);
-      return null;
+    const existingProfile = await storageService.getUserProfile(userId);
+    const updatedProfile = { ...existingProfile, ...updateData, id: userId, updated_at: new Date().toISOString() };
+
+    await storageService.cacheUserProfile(updatedProfile);
+
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await withSupabaseRetry(async () =>
+          await supabase.from('profiles').update(updateData).eq('id', userId).select().single()
+        );
+        if (error) throw error;
+        return data;
+      } catch (error: any) {
+        console.error("Error updating user profile in Supabase:", error.message);
+        showError(`Failed to update profile to cloud: ${error.message}. It will sync when online.`);
+        return updatedProfile; // Return locally updated profile
+      }
     }
+    return updatedProfile;
   },
 
   /**
-   * Fetches the current user's preferences.
+   * Fetches the current user's preferences, prioritizing local cache.
    * @param {string} userId
    * @returns {Promise<UserPreferences | null>}
    */
   getPreferences: async (userId: string): Promise<UserPreferences | null> => {
-    try {
-      const { data, error } = await withSupabaseRetry(async () => // Added async and await
-        await supabase.from('user_preferences').select('*').eq('user_id', userId).single()
-      );
-      if (error) throw error;
-      return data;
-    } catch (error: any) {
-      console.error("Error fetching user preferences:", error.message);
-      showError(`Failed to fetch preferences: ${error.message}`);
-      return null;
+    const localPreferences = await storageService.getUserPreferences(userId);
+    if (localPreferences) return localPreferences;
+
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await withSupabaseRetry(async () =>
+          await supabase.from('user_preferences').select('*').eq('user_id', userId).single()
+        );
+        if (error) throw error;
+        if (data) {
+          await storageService.cacheUserPreferences(data);
+        }
+        return data;
+      } catch (error: any) {
+        console.error("Error fetching user preferences from Supabase:", error.message);
+        showError(`Failed to fetch preferences from cloud: ${error.message}`);
+        return null;
+      }
     }
+    return null;
   },
 
   /**
-   * Updates the current user's preferences.
+   * Updates the current user's preferences, updating locally and then syncing.
    * @param {string} userId
    * @param {Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>} updateData
    * @returns {Promise<UserPreferences | null>}
    */
   updatePreferences: async (userId: string, updateData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<UserPreferences | null> => {
-    try {
-      const { data, error } = await withSupabaseRetry(async () => // Added async and await
-        await supabase.from('user_preferences').update(updateData).eq('user_id', userId).select().single()
-      );
-      if (error) throw error;
-      return data;
-    } catch (error: any) {
-      console.error("Error updating user preferences:", error.message);
-      showError(`Failed to update preferences: ${error.message}`);
-      return null;
+    const existingPreferences = await storageService.getUserPreferences(userId);
+    const updatedPreferences = { ...existingPreferences, ...updateData, user_id: userId, updated_at: new Date().toISOString() };
+
+    await storageService.cacheUserPreferences(updatedPreferences);
+
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await withSupabaseRetry(async () =>
+          await supabase.from('user_preferences').update(updateData).eq('user_id', userId).select().single()
+        );
+        if (error) throw error;
+        return data;
+      } catch (error: any) {
+        console.error("Error updating user preferences in Supabase:", error.message);
+        showError(`Failed to update preferences to cloud: ${error.message}. It will sync when online.`);
+        return updatedPreferences; // Return locally updated preferences
+      }
     }
+    return updatedPreferences;
   },
 };

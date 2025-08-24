@@ -1,11 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Book, Smile, MessageSquare, BarChart, Settings, UserCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useSession } from '@/contexts/SessionContext'; // Import useSession
+import { userService, Profile } from '@/services/userService'; // Import userService and Profile type
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { user } = useSession(); // Get the current user
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user) {
+        const profile = await userService.getProfile(user.id);
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
@@ -39,10 +55,10 @@ const Sidebar: React.FC = () => {
       <div className="mt-auto pt-4 border-t border-white/20">
         <Link to="/settings" className="flex items-center gap-3 text-white hover:text-mindflow-blue transition-colors">
           <Avatar className="h-8 w-8 border border-white/30">
-            <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" /> {/* Replace with actual user avatar */}
+            <AvatarImage src={userProfile?.avatar_url || "https://github.com/shadcn.png"} alt={userProfile?.first_name || "User"} />
             <AvatarFallback><UserCircle className="h-6 w-6" /></AvatarFallback>
           </Avatar>
-          <span className="text-lg">User Name</span> {/* Replace with actual user name */}
+          <span className="text-lg">{userProfile?.first_name || "User Name"}</span>
         </Link>
       </div>
     </aside>
