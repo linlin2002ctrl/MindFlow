@@ -19,6 +19,17 @@ const encouragingMessages = [
 const DashboardPage: React.FC = () => {
   const randomEncouragingMessage = encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)];
 
+  // Placeholder data for MoodChart
+  const dummyMoodData = [
+    { name: 'Mon', moodScore: 7 },
+    { name: 'Tue', moodScore: 6 },
+    { name: 'Wed', moodScore: 8 },
+    { name: 'Thu', moodScore: 7 },
+    { name: 'Fri', moodScore: 9 },
+    { name: 'Sat', moodScore: 8 },
+    { name: 'Sun', moodScore: 7 },
+  ];
+
   return (
     <div className="flex flex-col items-center p-4 md:p-8 min-h-[calc(100vh-120px)]">
       <div className="w-full max-w-4xl space-y-6">
@@ -36,7 +47,7 @@ const DashboardPage: React.FC = () => {
         <MoodQuickCheck />
 
         {/* Weekly Mood Trend Chart */}
-        <MoodChart />
+        <MoodChart data={dummyMoodData} />
 
         {/* Recent Journal Entries */}
         <RecentEntries />

@@ -204,6 +204,36 @@ export async function generateInsights(journalEntries: string[]): Promise<string
   }
 }
 
+/**
+ * Generates personalized recommendations based on journal entries.
+ * @param journalEntries An array of user's journal entry texts.
+ * @returns A promise that resolves to an array of personalized recommendation strings.
+ */
+export async function generateRecommendations(journalEntries: string[]): Promise<string[]> {
+  if (journalEntries.length === 0) {
+    return ["Write your first entry to get personalized recommendations."];
+  }
+  if (!navigator.onLine) {
+    return ["You are offline. Unable to generate recommendations at this moment."];
+  }
+
+  const combinedEntries = journalEntries.join("\n---\n");
+  const prompt = `You are an AI personal growth coach. Based on the following journal entries, provide 3-5 concise, actionable, and personalized recommendations to help the user with their well-being and journaling practice. Focus on observations from their entries. Format the output as a numbered list. Journal entries: "${combinedEntries}"`;
+
+  try {
+    const result = await withRetry(async () => {
+      const chat = model.startChat({ safetySettings });
+      const apiResponse = await chat.sendMessage(prompt);
+      const text = apiResponse.response.text();
+      return text.split('\n').filter(line => line.trim().length > 0 && (line.startsWith('-') || line.match(/^\d+\./))).map(line => line.replace(/^\d+\.\s*|-\s*/, '').trim());
+    });
+    return result;
+  } catch (error) {
+    console.error("Error generating recommendations from Gemini API:", error);
+    return ["I'm having trouble generating recommendations right now. Please try again later."];
+  }
+}
+
 // --- Privacy Note ---
 // This service processes user input for analysis and question generation.
 // It does not store sensitive user data directly within the API calls or on the Gemini service.
