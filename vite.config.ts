@@ -16,11 +16,11 @@ export default defineConfig(() => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'MindFlow',
+        name: 'MindFlow - AI Journaling',
         short_name: 'MindFlow',
         description: 'AI-powered journaling app that asks questions and provides insights',
-        theme_color: '#6366f1',
-        background_color: '#6366f1',
+        theme_color: '#6366f1', // MindFlow Purple
+        background_color: '#6366f1', // MindFlow Purple
         display: 'standalone',
         scope: '/',
         start_url: '/',
@@ -40,6 +40,29 @@ export default defineConfig(() => ({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',
+          },
+        ],
+        shortcuts: [
+          {
+            name: 'Start Journaling',
+            short_name: 'Journal',
+            description: 'Begin a new journaling session',
+            url: '/journal',
+            icons: [{ src: '/pwa-192x192.png', sizes: '192x192' }],
+          },
+          {
+            name: 'Mood Check-in',
+            short_name: 'Mood',
+            description: 'Quickly log your current mood',
+            url: '/mood-tracker',
+            icons: [{ src: '/pwa-192x192.png', sizes: '192x192' }],
+          },
+          {
+            name: 'View Insights',
+            short_name: 'Insights',
+            description: 'Check your personal growth insights',
+            url: '/insights',
+            icons: [{ src: '/pwa-192x192.png', sizes: '192x192' }],
           },
         ],
       },
