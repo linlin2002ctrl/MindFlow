@@ -13,7 +13,8 @@ import AIConversationPage from "./pages/AIConversationPage";
 import InsightsPage from "./pages/InsightsPage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
-import GoalsPage from "./pages/GoalsPage"; // Import the new GoalsPage
+import GoalsPage from "./pages/GoalsPage";
+import ShareTargetPage from "./pages/ShareTargetPage"; // Import the new ShareTargetPage
 import { SessionContextProvider } from "./contexts/SessionContext";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
         <SessionContextProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/share-target" element={<ShareTargetPage />} /> {/* Add the share target route */}
             <Route
               path="*"
               element={
@@ -39,7 +41,7 @@ const App = () => (
                     <Route path="/ai-conversation" element={<AIConversationPage />} />
                     <Route path="/insights" element={<InsightsPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/goals" element={<GoalsPage />} /> {/* Add the goals page route */}
+                    <Route path="/goals" element={<GoalsPage />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
