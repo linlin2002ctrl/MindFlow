@@ -224,13 +224,12 @@ export const useConversationManager = () => {
       showSuccess("Journaling session ended and entry saved!");
     } else if (user && !state.currentEntryId) {
       // Fallback: if no ID was tracked, insert as a new entry
-      const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'> = {
+      const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'> = {
         user_id: user.id,
         session_type: state.sessionType || 'standard_session', // Default if null
         mood_rating: state.currentMood,
         conversation: state.conversationHistory,
         ai_analysis: { text: finalAnalysis },
-        sync_status: state.isOffline ? 'pending' : 'synced',
         entry_text: state.entryText,
         tags: null,
       };
@@ -319,13 +318,12 @@ export const useConversationManager = () => {
     addMessageToHistory('model', `Let's start your ${sessionType.replace('_', ' ')}!`);
 
     // Create initial entry via journalService (handles local/remote)
-    const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'> = {
+    const newEntryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'> = {
       user_id: user.id,
       session_type: sessionType,
       mood_rating: mood,
       conversation: [],
       ai_analysis: null,
-      sync_status: navigator.onLine ? 'synced' : 'pending',
       entry_text: '',
       tags: null,
     };

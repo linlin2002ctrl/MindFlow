@@ -26,10 +26,10 @@ export interface JournalEntry {
 export const journalService = {
   /**
    * Creates a new journal entry, saving it locally first and then attempting to sync.
-   * @param {Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'>} entryData
+   * @param {Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'>} entryData
    * @returns {Promise<JournalEntry | null>}
    */
-  createEntry: async (entryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'>): Promise<JournalEntry | null> => {
+  createEntry: async (entryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'>): Promise<JournalEntry | null> => {
     const newEntry: JournalEntry = {
       ...entryData,
       id: crypto.randomUUID(), // Generate UUID client-side for local storage
