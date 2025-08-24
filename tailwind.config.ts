@@ -62,6 +62,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        mindflow: {
+          purple: "#6366f1",
+          blue: "#8b5cf6",
+        },
+      },
+      backgroundImage: {
+        'mindflow-gradient': 'linear-gradient(to right, var(--tw-gradient-stops))',
       },
       borderRadius: {
         lg: "var(--radius)",
