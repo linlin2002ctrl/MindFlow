@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { env } from '@/lib/env';
-import { showError } from '@/utils/toast'; // Added import for showError
+import { showError } from '@/utils/toast';
+import { detectCulturalKeywords, detectCrisisTerms, getMyanmarDateInfo, getCrisisResponse, myanmarKeywords } from '@/utils/myanmarCulturalUtils'; // Import new utilities
 
 const genAI = new GoogleGenerativeAI(env.geminiApiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -86,7 +87,7 @@ async function withRetry<T>(fn: () => Promise<T>, t: (key: string, ...args: (str
       await new Promise(res => setTimeout(res, delay));
       return withRetry(fn, t, retries - 1, delay * 2);
     }
-    showError(t('errorGeminiOperationFailed')); // Using a generic error for Gemini
+    showError(t('errorGeminiOperationFailed'));
     throw error;
   }
 }
@@ -97,7 +98,10 @@ export async function generateQuestion(mood: number, t: (key: string, ...args: (
     return fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
   }
 
-  const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Where appropriate, subtly incorporate Buddhist or traditional Myanmar cultural references. Based on the user's mood (1-10 scale, 1 being very sad, 10 being very happy), generate one short, open-ended, and engaging journaling question. Avoid clinical or therapy language. Keep it conversational and encouraging. Mood: ${mood}`;
+  const myanmarDateInfo = getMyanmarDateInfo(new Date(), t);
+  const culturalContext = myanmarDateInfo ? ` Today's context: ${myanmarDateInfo}.` : '';
+
+  const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Where appropriate, subtly incorporate Buddhist or traditional Myanmar cultural references. Based on the user's mood (1-10 scale, 1 being very sad, 10 being very happy), generate one short, open-ended, and engaging journaling question. Avoid clinical or therapy language. Keep it conversational and encouraging.${culturalContext} Mood: ${mood}`;
 
   try {
     const result = await withRetry(async () => {
@@ -116,11 +120,29 @@ export async function analyzeResponse(response: string, t: (key: string, ...args
   if (!response.trim()) {
     return t('pleaseWriteSomething');
   }
+
+  // Crisis detection
+  const crisisDetected = detectCrisisTerms(response).length > 0;
+  if (crisisDetected) {
+    return getCrisisResponse(t);
+  }
+
   if (!navigator.onLine) {
     return t('errorAnalyzingResponseOffline');
   }
 
-  const prompt = `You are an AI journaling assistant for users in Myanmar. Analyze the following journal entry for key themes, emotions, and potential patterns. Provide a concise, friendly, and non-clinical summary of insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Avoid making direct recommendations or interpretations that sound like therapy. Focus on observations. Journal entry: "${response}"`;
+  const detectedStress = detectCulturalKeywords(response).includes('stress');
+  const culturalKeywords = detectCulturalKeywords(response).filter(cat => cat !== 'stress' && cat !== 'crisis');
+  let culturalPromptAdditions = '';
+
+  if (detectedStress) {
+    culturalPromptAdditions += ` The user seems to be experiencing stress. Suggest a gentle, culturally appropriate coping mechanism like "မေတ္တာ ဘာဝနာ တရားထိုင်ကြည့်ပါ" (try Metta meditation) or focusing on community support.`;
+  }
+  if (culturalKeywords.length > 0) {
+    culturalPromptAdditions += ` User mentioned themes like ${culturalKeywords.join(', ')}. Incorporate these into the analysis with relevant Myanmar cultural perspectives.`;
+  }
+
+  const prompt = `You are an AI journaling assistant for users in Myanmar. Analyze the following journal entry for key themes, emotions, and potential patterns. Provide a concise, friendly, and non-clinical summary of insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Avoid making direct recommendations or interpretations that sound like therapy. Focus on observations.${culturalPromptAdditions} Journal entry: "${response}"`;
 
   try {
     const result = await withRetry(async () => {
@@ -143,7 +165,27 @@ export async function suggestFollowUp(conversation: { role: string; parts: { tex
     return generateQuestion(5, t);
   }
 
-  const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language. Conversation: ${JSON.stringify(conversation)}`;
+  // Use filter and slice(-1)[0] for broader compatibility
+  const lastUserMessage = conversation.filter(msg => msg.role === 'user').slice(-1)[0]?.parts[0].text || '';
+
+  // Crisis detection in the last user message
+  const crisisDetected = detectCrisisTerms(lastUserMessage).length > 0;
+  if (crisisDetected) {
+    return getCrisisResponse(t);
+  }
+
+  const detectedStress = detectCulturalKeywords(lastUserMessage).includes('stress');
+  const culturalKeywords = detectCulturalKeywords(lastUserMessage).filter(cat => cat !== 'stress' && cat !== 'crisis');
+  let culturalPromptAdditions = '';
+
+  if (detectedStress) {
+    culturalPromptAdditions += ` The user seems to be experiencing stress. Suggest a gentle, culturally appropriate coping mechanism or a question that encourages self-compassion.`;
+  }
+  if (culturalKeywords.length > 0) {
+    culturalPromptAdditions += ` User mentioned themes like ${culturalKeywords.join(', ')}. Incorporate these into the follow-up question with relevant Myanmar cultural perspectives.`;
+  }
+
+  const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language.${culturalPromptAdditions} Conversation: ${JSON.stringify(conversation)}`;
 
   try {
     const result = await withRetry(async () => {
