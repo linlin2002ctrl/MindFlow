@@ -34,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 flex items-center justify-between">
       <Link to="/" className="text-2xl font-bold text-white">
-        {t('appName')}
+        MindFlow
       </Link>
       <div className="flex items-center gap-4">
         <Link to="/settings" className="flex items-center gap-2 text-white hover:text-mindflow-blue transition-colors">
