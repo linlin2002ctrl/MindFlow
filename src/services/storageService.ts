@@ -5,11 +5,11 @@ import { AiInsight } from './insightsService';
 import { showError, showSuccess } from '@/utils/toast';
 import { env } from '@/lib/env';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from '@/i18n/i18n'; // Import useTranslation
 
 const DB_NAME = 'mindflow-db';
-const DB_VERSION = 2; // Increment database version to trigger upgrade
+const DB_VERSION = 2;
 
-// Object store names
 const JOURNAL_ENTRIES_STORE = 'journalEntries';
 const AI_QUESTIONS_STORE = 'aiQuestions';
 const USER_PREFERENCES_STORE = 'userPreferences';
@@ -17,9 +17,7 @@ const USER_PROFILES_STORE = 'userProfiles';
 const AI_INSIGHTS_STORE = 'aiInsights';
 
 let db: IDBPDatabase | null = null;
-// Removed global encryptionKey: let encryptionKey: CryptoKey | null = null;
 
-// --- IndexedDB Initialization ---
 async function initDB(): Promise<IDBPDatabase> {
   if (db) return db;
 
@@ -27,8 +25,8 @@ async function initDB(): Promise<IDBPDatabase> {
     upgrade(db, oldVersion, newVersion, transaction) {
       if (!db.objectStoreNames.contains(JOURNAL_ENTRIES_STORE)) {
         const journalStore = db.createObjectStore(JOURNAL_ENTRIES_STORE, { keyPath: 'id' });
-        journalStore.createIndex('sync_status', 'sync_status', { unique: false }); // Create index here
-      } else if (oldVersion < 2) { // If upgrading from version 1 to 2
+        journalStore.createIndex('sync_status', 'sync_status', { unique: false });
+      } else if (oldVersion < 2) {
         const journalStore = transaction.objectStore(JOURNAL_ENTRIES_STORE);
         if (!journalStore.indexNames.contains('sync_status')) {
           journalStore.createIndex('sync_status', 'sync_status', { unique: false });
@@ -46,8 +44,8 @@ async function initDB(): Promise<IDBPDatabase> {
       }
       if (!db.objectStoreNames.contains(AI_INSIGHTS_STORE)) {
         const insightsStore = db.createObjectStore(AI_INSIGHTS_STORE, { keyPath: 'id' });
-        insightsStore.createIndex('sync_status', 'sync_status', { unique: false }); // Add sync_status index for insights
-      } else if (oldVersion < 2) { // If upgrading from version 1 to 2
+        insightsStore.createIndex('sync_status', 'sync_status', { unique: false });
+      } else if (oldVersion < 2) {
         const insightsStore = transaction.objectStore(AI_INSIGHTS_STORE);
         if (!insightsStore.indexNames.contains('sync_status')) {
           insightsStore.createIndex('sync_status', 'sync_status', { unique: false });
@@ -58,18 +56,13 @@ async function initDB(): Promise<IDBPDatabase> {
   return db;
 }
 
-// --- Encryption Utilities (Web Crypto API) ---
 const ENCRYPTION_ALGORITHM = 'AES-GCM';
 const ENCRYPTION_KEY_LENGTH = 256;
-const IV_LENGTH = 12; // 96-bit IV for AES-GCM
+const IV_LENGTH = 12;
 
-// Modified getEncryptionKey to always derive a new key for the given userId
 async function getEncryptionKey(userId: string): Promise<CryptoKey> {
-  // Derive a key from a combination of a fixed app secret and user ID
-  // For a real-world app, consider a more robust key management strategy
-  // involving user passwords or server-side key distribution.
-  const keyMaterial = new TextEncoder().encode(`${env.geminiApiKey}-${userId}`); // Using Gemini API key as a shared secret for derivation
-  const salt = new TextEncoder().encode(userId.substring(0, 16)); // Use part of user ID as salt
+  const keyMaterial = new TextEncoder().encode(`${env.geminiApiKey}-${userId}`);
+  const salt = new TextEncoder().encode(userId.substring(0, 16));
 
   const baseKey = await crypto.subtle.importKey(
     'raw',
@@ -83,12 +76,12 @@ async function getEncryptionKey(userId: string): Promise<CryptoKey> {
     {
       name: 'PBKDF2',
       salt: salt,
-      iterations: 100000, // High iteration count for security
+      iterations: 100000,
       hash: 'SHA-256',
     },
     baseKey,
     { name: ENCRYPTION_ALGORITHM, length: ENCRYPTION_KEY_LENGTH },
-    true, // exportable
+    true,
     ['encrypt', 'decrypt']
   );
 
@@ -111,7 +104,7 @@ async function encryptData(data: string, userId: string): Promise<string> {
   combined.set(iv);
   combined.set(encryptedArray, iv.length);
 
-  return btoa(String.fromCharCode(...combined)); // Base64 encode
+  return btoa(String.fromCharCode(...combined));
 }
 
 async function decryptData(encryptedData: string, userId: string): Promise<string> {
@@ -130,22 +123,20 @@ async function decryptData(encryptedData: string, userId: string): Promise<strin
   return new TextDecoder().decode(decrypted);
 }
 
-// --- Storage Service API ---
 export const storageService = {
-  // --- Journal Entries ---
   saveJournalEntry: async (entry: JournalEntry, userId: string): Promise<JournalEntry | null> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       const tx = database.transaction(JOURNAL_ENTRIES_STORE, 'readwrite');
       const store = tx.objectStore(JOURNAL_ENTRIES_STORE);
 
-      // Encrypt sensitive fields
       const encryptedEntry = { ...entry };
       if (entry.entry_text) {
         encryptedEntry.entry_text = await encryptData(entry.entry_text, userId);
       }
       if (entry.conversation && Array.isArray(entry.conversation) && entry.conversation.length > 0) {
-        encryptedEntry.conversation = await encryptData(JSON.stringify(entry.conversation), userId) as any; // Store as encrypted string
+        encryptedEntry.conversation = await encryptData(JSON.stringify(entry.conversation), userId) as any;
       }
       encryptedEntry.is_encrypted = true;
 
@@ -154,34 +145,35 @@ export const storageService = {
       return encryptedEntry;
     } catch (error: any) {
       console.error("Error saving journal entry to IndexedDB:", error);
-      showError(`Failed to save entry locally: ${error.message}`);
+      showError(t('errorSavingEntryLocally', error.message));
       return null;
     }
   },
 
   getJournalEntry: async (id: string, userId: string): Promise<JournalEntry | null> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       const entry = await database.get(JOURNAL_ENTRIES_STORE, id);
       if (entry && entry.is_encrypted) {
-        // Decrypt sensitive fields
         if (entry.entry_text) {
           entry.entry_text = await decryptData(entry.entry_text, userId);
         }
         if (entry.conversation && typeof entry.conversation === 'string') {
           entry.conversation = JSON.parse(await decryptData(entry.conversation, userId));
         }
-        entry.is_encrypted = false; // Mark as decrypted for use
+        entry.is_encrypted = false;
       }
       return entry;
     } catch (error: any) {
       console.error("Error getting journal entry from IndexedDB:", error);
-      showError(`Failed to retrieve entry locally: ${error.message}`);
+      showError(t('errorFetchingEntryLocally', error.message));
       return null;
     }
   },
 
   getJournalEntries: async (userId: string): Promise<JournalEntry[]> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       const entries = await database.getAll(JOURNAL_ENTRIES_STORE);
@@ -200,32 +192,32 @@ export const storageService = {
       return decryptedEntries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } catch (error: any) {
       console.error("Error getting all journal entries from IndexedDB:", error);
-      showError(`Failed to retrieve local entries: ${error.message}`);
+      showError(t('errorFetchingEntryLocally', error.message));
       return [];
     }
   },
 
   deleteJournalEntry: async (id: string): Promise<boolean> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       await database.delete(JOURNAL_ENTRIES_STORE, id);
       return true;
     } catch (error: any) {
       console.error("Error deleting journal entry from IndexedDB:", error);
-      showError(`Failed to delete local entry: ${error.message}`);
+      showError(t('errorDeletingEntryLocally', error.message));
       return false;
     }
   },
 
-  // --- AI Questions (Fallback) ---
   cacheAIQuestions: async (questions: string[]): Promise<void> => {
     try {
       const database = await initDB();
       const tx = database.transaction(AI_QUESTIONS_STORE, 'readwrite');
       const store = tx.objectStore(AI_QUESTIONS_STORE);
-      await store.clear(); // Clear old questions
+      await store.clear();
       for (const q of questions) {
-        await store.add({ question: q, id: crypto.randomUUID() }); // Add with a unique ID
+        await store.add({ question: q, id: crypto.randomUUID() });
       }
       await tx.done;
     } catch (error: any) {
@@ -244,7 +236,6 @@ export const storageService = {
     }
   },
 
-  // New function to cache initial AI questions if the store is empty
   cacheInitialAIQuestions: async (initialQuestions: string[]): Promise<void> => {
     try {
       const database = await initDB();
@@ -258,15 +249,15 @@ export const storageService = {
     }
   },
 
-  // --- User Preferences ---
   cacheUserPreferences: async (preferences: UserPreferences): Promise<UserPreferences | null> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       await database.put(USER_PREFERENCES_STORE, preferences);
       return preferences;
     } catch (error: any) {
       console.error("Error caching user preferences:", error);
-      showError(`Failed to cache preferences locally: ${error.message}`);
+      showError(t('errorCachingPreferencesLocally', error.message));
       return null;
     }
   },
@@ -281,15 +272,15 @@ export const storageService = {
     }
   },
 
-  // --- User Profiles ---
   cacheUserProfile: async (profile: Profile): Promise<Profile | null> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       await database.put(USER_PROFILES_STORE, profile);
       return profile;
     } catch (error: any) {
       console.error("Error caching user profile:", error);
-      showError(`Failed to cache profile locally: ${error.message}`);
+      showError(t('errorCachingProfileLocally', error.message));
       return null;
     }
   },
@@ -304,15 +295,15 @@ export const storageService = {
     }
   },
 
-  // --- AI Insights ---
   cacheAiInsight: async (insight: AiInsight): Promise<AiInsight | null> => {
+    const { t } = useTranslation();
     try {
       const database = await initDB();
       await database.put(AI_INSIGHTS_STORE, insight);
       return insight;
     } catch (error: any) {
       console.error("Error caching AI insight:", error);
-      showError(`Failed to cache insight locally: ${error.message}`);
+      showError(t('errorCachingInsightLocally', error.message));
       return null;
     }
   },
@@ -328,8 +319,8 @@ export const storageService = {
     }
   },
 
-  // --- Sync with Cloud ---
   syncWithCloud: async (userId: string): Promise<void> => {
+    const { t } = useTranslation();
     if (!navigator.onLine) {
       console.log("Still offline, cannot sync with cloud.");
       return;
@@ -338,13 +329,12 @@ export const storageService = {
     console.log("Attempting to sync pending journal entries and AI insights with Supabase...");
     const database = await initDB();
 
-    // Sync Journal Entries
     const journalTx = database.transaction(JOURNAL_ENTRIES_STORE, 'readwrite');
     const journalStore = journalTx.objectStore(JOURNAL_ENTRIES_STORE);
     const pendingJournalEntries = await journalStore.index('sync_status').getAll('pending');
 
     if (pendingJournalEntries && pendingJournalEntries.length > 0) {
-      showSuccess(`Found ${pendingJournalEntries.length} pending journal entries. Syncing...`);
+      showSuccess(t('foundPendingEntries', pendingJournalEntries.length));
       for (const entry of pendingJournalEntries) {
         try {
           const decryptedEntry = { ...entry };
@@ -368,22 +358,21 @@ export const storageService = {
           console.log(`Synced journal entry: ${entry.id}`);
         } catch (err: any) {
           console.error(`Failed to sync journal entry ${entry.id}:`, err.message);
-          showError(`Failed to sync journal entry ${entry.id}: ${err.message}`);
+          showError(t('errorSyncingJournalEntry', entry.id, err.message));
         }
       }
       await journalTx.done;
-      showSuccess("All pending journal entries synchronized!");
+      showSuccess(t('allPendingEntriesSynced'));
     } else {
       console.log("No pending journal entries to sync.");
     }
 
-    // Sync AI Insights
     const insightsTx = database.transaction(AI_INSIGHTS_STORE, 'readwrite');
     const insightsStore = insightsTx.objectStore(AI_INSIGHTS_STORE);
     const pendingAiInsights = await insightsStore.index('sync_status').getAll('pending');
 
     if (pendingAiInsights && pendingAiInsights.length > 0) {
-      showSuccess(`Found ${pendingAiInsights.length} pending AI insights. Syncing...`);
+      showSuccess(t('foundPendingInsights', pendingAiInsights.length));
       for (const insight of pendingAiInsights) {
         try {
           const { error } = await supabase
@@ -396,21 +385,17 @@ export const storageService = {
           console.log(`Synced AI insight: ${insight.id}`);
         } catch (err: any) {
           console.error(`Failed to sync AI insight ${insight.id}:`, err.message);
-          showError(`Failed to sync AI insight ${insight.id}: ${err.message}`);
+          showError(t('errorSyncingAIInsight', insight.id, err.message));
         }
       }
       await insightsTx.done;
-      showSuccess("All pending AI insights synchronized!");
+      showSuccess(t('allPendingInsightsSynced'));
     } else {
       console.log("No pending AI insights to sync.");
     }
   },
 
-  // --- Cleanup Old Data (Placeholder) ---
   cleanupOldData: async (): Promise<void> => {
-    // This function would implement logic to remove old entries based on user preferences
-    // or a predefined retention policy to manage storage quota.
-    // For now, it's a placeholder.
     console.log("Cleanup old data: Not yet implemented.");
   },
 };

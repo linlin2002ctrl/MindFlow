@@ -3,36 +3,48 @@ import App from "./App.tsx";
 import "./globals.css";
 import { registerSW } from 'virtual:pwa-register';
 import { toast } from 'sonner';
+import { I18nProvider, useTranslation } from './i18n/i18n'; // Import I18nProvider and useTranslation
 
-// Register the service worker and handle updates
-const updateSW = registerSW({
-  onNeedRefresh() {
-    toast.info(
-      "A new version of MindFlow is available!",
-      {
-        action: {
-          label: "Update Now",
-          onClick: () => updateSW(true),
-        },
-        duration: Infinity, // Keep toast visible until user acts
-        position: "top-center",
+// Create a wrapper component to use the translation hook
+const MainApp = () => {
+  const { t } = useTranslation();
+
+  // Register the service worker and handle updates
+  const updateSW = registerSW({
+    onNeedRefresh() {
+      toast.info(
+        t('newVersionAvailable'),
+        {
+          action: {
+            label: t('updateNow'),
+            onClick: () => updateSW(true),
+          },
+          duration: Infinity,
+          position: "top-center",
+        }
+      );
+    },
+    onOfflineReady() {
+      toast.success(t('offlineReady'));
+    },
+    onRegistered(registration) {
+      if (registration) {
+        console.log('Service Worker registered:', registration);
+      } else {
+        console.log('Service Worker not registered.');
       }
-    );
-  },
-  onOfflineReady() {
-    toast.success("MindFlow is now available offline!");
-  },
-  onRegistered(registration) {
-    if (registration) {
-      console.log('Service Worker registered:', registration);
-    } else {
-      console.log('Service Worker not registered.');
-    }
-  },
-  onRegisterError(error) {
-    console.error('Service Worker registration error:', error);
-    toast.error("Failed to register offline capabilities.");
-  },
-});
+    },
+    onRegisterError(error) {
+      console.error('Service Worker registration error:', error);
+      toast.error(t('errorRegisteringOffline'));
+    },
+  });
 
-createRoot(document.getElementById("root")!).render(<App />);
+  return <App />;
+};
+
+createRoot(document.getElementById("root")!).render(
+  <I18nProvider>
+    <MainApp />
+  </I18nProvider>
+);

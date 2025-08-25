@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/i18n/i18n';
 
 interface MoodSelectorProps {
   initialMood: number;
@@ -9,22 +10,23 @@ interface MoodSelectorProps {
   disabled?: boolean;
 }
 
-const moodLabels: { [key: number]: string } = {
-  1: "စိတ်ဓါတ်ကျနေ 😩", // Feeling down
-  2: "စိတ်ဓါတ်ကျနေ 😩", // Feeling down
-  3: "စိတ်မကောင်းဖြစ်နေ 😞", // Not feeling good
-  4: "စိတ်မကောင်းဖြစ်နေ 😟", // Not feeling good
-  5: "သာမာန် 😐", // Normal/Okay
-  6: "သာမာန် 🙂", // Normal/Okay
-  7: "စိတ်ကောင်းနေ 😊", // Feeling good
-  8: "စိတ်ကောင်းနေ 😄", // Feeling good
-  9: "အလွန်ပျော်ရွှင်နေ 😁", // Very happy
-  10: "အလွန်ပျော်ရွှင်နေ ✨", // Very happy
-};
-
 const MoodSelector: React.FC<MoodSelectorProps> = ({ initialMood, onMoodChange, disabled }) => {
+  const { t } = useTranslation();
+
+  const moodLabels: { [key: number]: string } = {
+    1: t('moodAngry') + " 😩",
+    2: t('moodAngry') + " 😩",
+    3: t('moodSad') + " 😞",
+    4: t('moodSad') + " 😟",
+    5: t('moodNeutral') + " 😐",
+    6: t('moodNeutral') + " 🙂",
+    7: t('moodHappy') + " 😊",
+    8: t('moodHappy') + " 😄",
+    9: t('moodJoyful') + " 😁",
+    10: t('moodJoyful') + " ✨",
+  };
+
   const getMoodColor = (mood: number) => {
-    // Interpolate between red (1) and green (10)
     const red = Math.round(255 - (mood - 1) * (255 / 9));
     const green = Math.round((mood - 1) * (255 / 9));
     return `rgb(${red}, ${green}, 0)`;
@@ -33,7 +35,7 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({ initialMood, onMoodChange, 
   return (
     <div className="flex flex-col items-center gap-4" role="group" aria-labelledby="mood-selector-label">
       <label id="mood-selector-label" htmlFor="mood-slider" className="text-white text-xl font-semibold">
-        How are you feeling? <span aria-live="polite">{moodLabels[initialMood]}</span>
+        {t('howAreYouFeeling')} <span aria-live="polite">{moodLabels[initialMood]}</span>
       </label>
       <div className="relative w-full max-w-xs h-10 flex items-center justify-center">
         <div
@@ -54,7 +56,7 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({ initialMood, onMoodChange, 
           aria-valuenow={initialMood}
           aria-valuemin={1}
           aria-valuemax={10}
-          aria-label={`Current mood: ${initialMood}`}
+          aria-label={t('currentMood', initialMood)}
           disabled={disabled}
         />
       </div>

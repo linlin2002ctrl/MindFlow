@@ -5,26 +5,28 @@ import { Smile, Frown, Meh, Laugh, Angry } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSession } from '@/contexts/SessionContext';
-import { journalService } from '@/services/journalService'; // Import journalService
+import { journalService } from '@/services/journalService';
+import { useTranslation } from '@/i18n/i18n';
 
 type Mood = 'joyful' | 'happy' | 'neutral' | 'sad' | 'angry';
 
 const MoodQuickCheck: React.FC = () => {
   const { user } = useSession();
+  const { t } = useTranslation();
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const moods = [
-    { key: 'joyful', icon: Laugh, label: 'အလွန်ပျော်ရွှင်နေ', color: 'text-yellow-300', rating: 10 },
-    { key: 'happy', icon: Smile, label: 'စိတ်ကောင်းနေ', color: 'text-green-400', rating: 8 },
-    { key: 'neutral', icon: Meh, label: 'သာမာန်', color: 'text-blue-300', rating: 5 },
-    { key: 'sad', icon: Frown, label: 'စိတ်မကောင်းဖြစ်နေ', color: 'text-indigo-300', rating: 3 },
-    { key: 'angry', icon: Angry, label: 'စိတ်ဓါတ်ကျနေ', color: 'text-red-400', rating: 1 },
+    { key: 'joyful', icon: Laugh, label: t('moodJoyful'), color: 'text-yellow-300', rating: 10 },
+    { key: 'happy', icon: Smile, label: t('moodHappy'), color: 'text-green-400', rating: 8 },
+    { key: 'neutral', icon: Meh, label: t('moodNeutral'), color: 'text-blue-300', rating: 5 },
+    { key: 'sad', icon: Frown, label: t('moodSad'), color: 'text-indigo-300', rating: 3 },
+    { key: 'angry', icon: Angry, label: t('moodAngry'), color: 'text-red-400', rating: 1 },
   ];
 
   const handleMoodSelect = async (mood: Mood) => {
     if (!user) {
-      toast.error("Please log in to record your mood.");
+      toast.error(t('errorRecordingMood'));
       return;
     }
 
@@ -44,14 +46,14 @@ const MoodQuickCheck: React.FC = () => {
       });
 
       if (!newEntry) {
-        toast.error("Failed to save mood. Please try again.");
+        toast.error(t('errorSavingMood'));
       } else {
-        toast.success(`You selected: ${mood.charAt(0).toUpperCase() + mood.slice(1)}! Your mood has been recorded.`);
-        if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+        toast.success(t('moodRecorded', mood.charAt(0).toUpperCase() + mood.slice(1)));
+        if (navigator.vibrate) navigator.vibrate(50);
       }
     } catch (err) {
       console.error("Unexpected error saving mood:", err);
-      toast.error("An unexpected error occurred while saving your mood.");
+      toast.error(t('errorUnexpectedSaving'));
     } finally {
       setIsSaving(false);
     }
@@ -59,7 +61,7 @@ const MoodQuickCheck: React.FC = () => {
 
   return (
     <GlassCard className="p-6 text-center">
-      <h3 className="text-2xl font-semibold text-white mb-4">How are you feeling today?</h3>
+      <h3 className="text-2xl font-semibold text-white mb-4">{t('howAreYouFeelingToday')}</h3>
       <div className="flex flex-wrap justify-center gap-4 mb-6">
         {moods.map((mood) => (
           <Button
@@ -79,9 +81,9 @@ const MoodQuickCheck: React.FC = () => {
         ))}
       </div>
       {selectedMood && (
-        <p className="text-white/80 mt-2">You've checked in as <span className="font-bold">{moods.find(m => m.key === selectedMood)?.label}</span>.</p>
+        <p className="text-white/80 mt-2">{t('moodCheckedIn', moods.find(m => m.key === selectedMood)?.label)}.</p>
       )}
-      {isSaving && <p className="text-white/70 mt-2">Saving mood...</p>}
+      {isSaving && <p className="text-white/70 mt-2">{t('savingMood')}</p>}
     </GlassCard>
   );
 };

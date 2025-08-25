@@ -5,6 +5,7 @@ import { Send, Mic, StopCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/i18n/i18n';
 
 interface ResponseInputProps {
   value: string;
@@ -17,7 +18,6 @@ interface ResponseInputProps {
   disabled?: boolean;
 }
 
-// Simple function to estimate reading time (WPM: words per minute)
 const estimateReadingTime = (text: string, wpm = 200) => {
   const words = text.split(/\s+/).filter(word => word.length > 0).length;
   if (words === 0) return "0 min read";
@@ -35,11 +35,11 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
   isSaving,
   disabled,
 }) => {
+  const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wordCount = value.split(/\s+/).filter(word => word.length > 0).length;
   const readingTime = estimateReadingTime(value);
 
-  // Auto-expanding textarea logic
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -54,18 +54,17 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
     }
   };
 
-  // Gentle nudges if user pauses writing for too long (e.g., 60 seconds)
   const nudgeTimerRef = useRef<number | null>(null);
   const startNudgeTimer = useCallback(() => {
     if (nudgeTimerRef.current) {
       clearTimeout(nudgeTimerRef.current);
     }
     nudgeTimerRef.current = window.setTimeout(() => {
-      if (value.trim() !== '') { // Only nudge if there's some text
-        toast.info("Take your time, but don't forget to keep writing! What else comes to mind?");
+      if (value.trim() !== '') {
+        toast.info(t('nudgeMessage'));
       }
-    }, 60000); // 60 seconds
-  }, [value]);
+    }, 60000);
+  }, [value, t]);
 
   useEffect(() => {
     if (!disabled) {
@@ -78,13 +77,12 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
     };
   }, [value, disabled, startNudgeTimer]);
 
-  // Micro-feedback on submit
   const encouragingFeedback = [
-    "Great insight!",
-    "Keep going!",
-    "That's a thoughtful response!",
-    "You're doing great!",
-    "Every word matters!",
+    t('greatInsight'),
+    t('keepGoing'),
+    t('thoughtfulResponse'),
+    t('doingGreat'),
+    t('everyWordMatters'),
   ];
 
   const handleSubmit = () => {
@@ -99,15 +97,15 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
     <div className="relative">
       <Textarea
         ref={textareaRef}
-        placeholder="Type your response here..."
+        placeholder={t('typeYourResponse')}
         className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/60 focus:ring-2 focus:ring-mindflow-blue resize-none overflow-hidden min-h-[4rem] pr-16 pb-8"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={disabled || isLoadingAI || isListening}
-        aria-label="Your journal response"
+        aria-label={t('yourJournalResponse')}
         rows={1}
-        spellCheck="true" // Enable browser spell check
+        spellCheck="true"
       />
       <div className="absolute bottom-2 right-2 flex items-center gap-2 text-xs text-white/50">
         <AnimatePresence>
@@ -119,13 +117,13 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
               transition={{ duration: 0.2 }}
               className="flex items-center gap-1"
             >
-              <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+              <Loader2 className="h-3 w-3 animate-spin" /> {t('saving')}
             </motion.span>
           )}
         </AnimatePresence>
-        <span aria-live="polite">{wordCount} words</span>
+        <span aria-live="polite">{t('words', wordCount)}</span>
         <span aria-hidden="true">•</span>
-        <span aria-hidden="true">{readingTime}</span>
+        <span aria-hidden="true">{t('minRead', readingTime.split(' ')[0])}</span>
       </div>
       <div className="absolute top-2 right-2 flex gap-2">
         <Button
@@ -137,7 +135,7 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
             isListening && "bg-red-500/80 hover:bg-red-600 text-white"
           )}
           disabled={disabled || isLoadingAI}
-          aria-label={isListening ? "Stop voice input" : "Start voice input"}
+          aria-label={isListening ? t('stopVoiceInput') : t('startVoiceInput')}
         >
           {isListening ? <StopCircle className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </Button>
@@ -147,7 +145,7 @@ const ResponseInput: React.FC<ResponseInputProps> = ({
           size="icon"
           className="text-white hover:bg-white/20"
           disabled={disabled || isLoadingAI || !value.trim()}
-          aria-label="Send response"
+          aria-label={t('sendResponse')}
         >
           {isLoadingAI ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
         </Button>

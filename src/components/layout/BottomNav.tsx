@@ -1,17 +1,19 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Book, BarChart, Settings, Target } from 'lucide-react'; // Added Target icon
+import { Home, Book, BarChart, Settings, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/i18n/i18n';
 
 const BottomNav: React.FC = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const navItems = [
-    { path: '/dashboard', icon: Home, label: 'ပင်မစာမျက်နှာ' },
-    { path: '/journal', icon: Book, label: 'နေ့စဉ်မှတ်တမ်း' },
-    { path: '/insights', icon: BarChart, label: 'ထိုးထွင်းသိမြင်မှုများ' },
-    { path: '/goals', icon: Target, label: 'ပန်းတိုင်များ' },
-    { path: '/settings', icon: Settings, label: 'ဆက်တင်များ' },
+    { path: '/dashboard', icon: Home, label: t('home') },
+    { path: '/journal', icon: Book, label: t('journal') },
+    { path: '/insights', icon: BarChart, label: t('insights') },
+    { path: '/goals', icon: Target, label: t('goals') },
+    { path: '/settings', icon: Settings, label: t('settings') },
   ];
 
   return (

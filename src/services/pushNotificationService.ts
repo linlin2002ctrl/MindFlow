@@ -1,9 +1,7 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { useTranslation } from '@/i18n/i18n'; // Import useTranslation
 
-// Replace with your actual VAPID public key
-// You'll need to generate VAPID keys for your application.
-// Example: web-push generate-vapid-keys
 const VAPID_PUBLIC_KEY = 'YOUR_VAPID_PUBLIC_KEY_HERE'; 
 
 export interface PushSubscriptionData {
@@ -44,8 +42,9 @@ export const pushNotificationService = {
    * @returns {Promise<PushSubscription | null>} The new push subscription object, or null if failed.
    */
   subscribeUser: async (userId: string): Promise<PushSubscription | null> => {
+    const { t } = useTranslation();
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      showError("Push notifications are not supported by your browser.");
+      showError(t('errorPushNotificationsNotSupported'));
       return null;
     }
 
@@ -54,26 +53,24 @@ export const pushNotificationService = {
       const existingSubscription = await registration.pushManager.getSubscription();
 
       if (existingSubscription) {
-        // Check if the existing subscription is already in Supabase
         const { data: existingRecord, error: fetchError } = await withSupabaseRetry(async () =>
           await supabase.from('push_subscriptions').select('*').eq('user_id', userId).eq('subscription->>endpoint', existingSubscription.endpoint).single()
         );
 
-        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows found
+        if (fetchError && fetchError.code !== 'PGRST116') {
           throw fetchError;
         }
 
         if (existingRecord) {
-          showSuccess("You are already subscribed to push notifications.");
+          showSuccess(t('alreadySubscribed'));
           return existingSubscription;
         } else {
-          // If subscription exists locally but not in DB, save it
           const subscriptionData: PushSubscriptionData = JSON.parse(JSON.stringify(existingSubscription));
           const { data, error } = await withSupabaseRetry(async () =>
             await supabase.from('push_subscriptions').insert({ user_id: userId, subscription: subscriptionData }).select().single()
           );
           if (error) throw error;
-          showSuccess("Successfully re-registered for push notifications!");
+          showSuccess(t('reRegisteredNotifications'));
           return existingSubscription;
         }
       }
@@ -92,11 +89,11 @@ export const pushNotificationService = {
 
       if (error) throw error;
 
-      showSuccess("Successfully subscribed to push notifications!");
+      showSuccess(t('subscribedNotifications'));
       return newSubscription;
     } catch (error: any) {
       console.error("Error subscribing to push notifications:", error);
-      showError(`Failed to subscribe to push notifications: ${error.message}. Please ensure your browser allows notifications.`);
+      showError(t('errorSubscribingNotifications', error.message));
       return null;
     }
   },
@@ -107,8 +104,9 @@ export const pushNotificationService = {
    * @returns {Promise<boolean>} True if unsubscribed successfully, false otherwise.
    */
   unsubscribeUser: async (userId: string): Promise<boolean> => {
+    const { t } = useTranslation();
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      showError("Push notifications are not supported by your browser.");
+      showError(t('errorPushNotificationsNotSupported'));
       return false;
     }
 
@@ -125,19 +123,19 @@ export const pushNotificationService = {
 
         const success = await subscription.unsubscribe();
         if (success) {
-          showSuccess("Successfully unsubscribed from push notifications.");
+          showSuccess(t('unsubscribedNotifications'));
           return true;
         } else {
-          showError("Failed to unsubscribe from browser push notifications.");
+          showError(t('errorUnsubscribingNotifications', 'browser failed'));
           return false;
         }
       } else {
-        showSuccess("You are not currently subscribed to push notifications.");
-        return true; // Already unsubscribed or never subscribed
+        showSuccess(t('notCurrentlySubscribed'));
+        return true;
       }
     } catch (error: any) {
       console.error("Error unsubscribing from push notifications:", error);
-      showError(`Failed to unsubscribe from push notifications: ${error.message}`);
+      showError(t('errorUnsubscribingNotifications', error.message));
       return false;
     }
   },
@@ -179,30 +177,29 @@ export const pushNotificationService = {
    * @returns {Promise<boolean>} True if the notification was sent successfully, false otherwise.
    */
   sendTestNotification: async (userId: string, title: string, body: string, url: string = '/'): Promise<boolean> => {
+    const { t } = useTranslation();
     try {
       const { data: subscriptionRecord, error: fetchError } = await withSupabaseRetry(async () =>
         await supabase.from('push_subscriptions').select('subscription').eq('user_id', userId).single()
       );
 
       if (fetchError || !subscriptionRecord) {
-        showError("Could not find an active push subscription for this user.");
+        showError(t('errorNoActiveSubscription'));
         return false;
       }
 
       const subscription = subscriptionRecord.subscription;
       const payload = { title, body, url };
 
-      // Get the current session to include the access token
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Invoke the Edge Function to send the notification
-      const edgeFunctionUrl = `https://jonovuoyxyzcqmpsqzdf.supabase.co/functions/v1/send-push-notification`; // Replace with your actual project ID and function name
+      const edgeFunctionUrl = `https://jonovuoyxyzcqmpsqzdf.supabase.co/functions/v1/send-push-notification`;
       
       const response = await fetch(edgeFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`, // Include auth token if function requires it
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({ subscription, payload }),
       });
@@ -210,14 +207,14 @@ export const pushNotificationService = {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to send notification via Edge Function.');
+        throw new Error(result.error || t('errorSendingNotificationEdge'));
       }
 
-      showSuccess("Test notification sent successfully!");
+      showSuccess(t('testNotificationSent'));
       return true;
     } catch (error: any) {
       console.error("Error sending test notification:", error);
-      showError(`Failed to send test notification: ${error.message}`);
+      showError(t('errorSendingTestNotification'));
       return false;
     }
   },

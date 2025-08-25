@@ -2,18 +2,17 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, Easing, Variants } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConversationManager, SessionType } from '@/hooks/useConversationManager';
-import { Loader2, WifiOff } from 'lucide-react'; // Import WifiOff icon
+import { Loader2, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import GlassCard from '@/components/GlassCard';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/i18n';
 
-// New imports
 import MoodSelector from './MoodSelector';
 import ResponseInput from './ResponseInput';
 import SessionControls from './SessionControls';
-import { Button } from '@/components/ui/button'; // Re-import Button for start session
+import { Button } from '@/components/ui/button';
 
-// Animation variants for questions and messages
 const questionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as Easing } },
@@ -26,6 +25,7 @@ const messageVariants: Variants = {
 };
 
 const JournalSession: React.FC = () => {
+  const { t } = useTranslation();
   const {
     currentMood,
     sessionType,
@@ -39,7 +39,7 @@ const JournalSession: React.FC = () => {
     aiAnalysis,
     isSaving,
     isPaused,
-    isOffline, // Destructure isOffline
+    isOffline,
     startSession,
     processUserResponse,
     skipQuestion,
@@ -50,12 +50,11 @@ const JournalSession: React.FC = () => {
   } = useConversationManager();
 
   const [selectedSessionType, setSelectedSessionType] = useState<SessionType>('standard_session');
-  const [initialMood, setInitialMood] = useState<number>(5); // Default to neutral mood
+  const [initialMood, setInitialMood] = useState<number>(5);
   const [userResponse, setUserResponse] = useState<string>('');
-  const [isVoiceListening, setIsVoiceListening] = useState<boolean>(false); // Internal state for voice input
+  const [isVoiceListening, setIsVoiceListening] = useState<boolean>(false);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
-  // Speech Recognition API setup
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = useRef<SpeechRecognition | null>(null);
 
@@ -70,12 +69,12 @@ const JournalSession: React.FC = () => {
         const transcript = event.results[0][0].transcript;
         setUserResponse(prev => prev + (prev ? ' ' : '') + transcript);
         setIsVoiceListening(false);
-        toast.success("Voice input recorded!");
+        toast.success(t('voiceInputRecorded'));
       };
 
       recognition.current.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
-        toast.error(`Voice input error: ${event.error}`);
+        toast.error(t('voiceInputError', event.error));
         setIsVoiceListening(false);
       };
 
@@ -83,9 +82,8 @@ const JournalSession: React.FC = () => {
         setIsVoiceListening(false);
       };
     }
-  }, [SpeechRecognition]);
+  }, [SpeechRecognition, t]);
 
-  // Scroll to bottom of conversation history
   useEffect(() => {
     if (conversationEndRef.current) {
       conversationEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -109,7 +107,7 @@ const JournalSession: React.FC = () => {
 
   const handleVoiceInputToggle = (listening: boolean) => {
     if (!SpeechRecognition) {
-      toast.error("Your browser does not support voice input.");
+      toast.error(t('errorVoiceInputNotSupported'));
       return;
     }
 
@@ -118,17 +116,17 @@ const JournalSession: React.FC = () => {
         try {
           recognition.current.start();
           setIsVoiceListening(true);
-          toast.info("Listening for your response...");
+          toast.info(t('listeningForResponse'));
           if (navigator.vibrate) navigator.vibrate(50);
         } catch (error) {
           console.error("Error starting speech recognition:", error);
-          toast.error("Could not start voice input. Please check microphone permissions.");
+          toast.error(t('errorStartingVoiceInput'));
           setIsVoiceListening(false);
         }
       } else {
         recognition.current.stop();
         setIsVoiceListening(false);
-        toast.info("Voice input paused.");
+        toast.info(t('voiceInputPaused'));
       }
     }
   };
@@ -138,14 +136,14 @@ const JournalSession: React.FC = () => {
       <GlassCard className="w-full max-w-2xl text-center full-screen-mode">
         {isOffline && (
           <div className="absolute top-0 left-0 right-0 bg-red-600/80 text-white text-sm py-2 flex items-center justify-center gap-2 rounded-t-xl">
-            <WifiOff className="h-4 w-4" /> You are offline. Some features may be limited.
+            <WifiOff className="h-4 w-4" /> {t('offlineWarning')}
           </div>
         )}
         <h1 className="text-4xl font-bold mb-4 text-white" aria-live="polite">
-          {isSessionActive ? "MindFlow Journal" : "Start Your Flow"}
+          {isSessionActive ? t('mindFlowJournal') : t('startYourFlow')}
         </h1>
         <p className="text-lg text-white/80 mb-6">
-          {isSessionActive ? "Let's explore your thoughts together." : "Begin a new journaling session."}
+          {isSessionActive ? t('letsExploreThoughts') : t('beginNewSession')}
         </p>
 
         {!isSessionActive ? (
@@ -165,8 +163,8 @@ const JournalSession: React.FC = () => {
               isSessionActive={isSessionActive}
               sessionType={selectedSessionType}
               onSessionTypeChange={setSelectedSessionType}
-              questionCount={0} // Not relevant before session starts
-              maxQuestions={0} // Not relevant before session starts
+              questionCount={0}
+              maxQuestions={0}
               isLoadingAI={isLoadingAI}
               isListening={isVoiceListening}
               onSkipQuestion={skipQuestion}
@@ -180,16 +178,15 @@ const JournalSession: React.FC = () => {
               onClick={handleStartSession}
               className="w-full bg-mindflow-blue hover:bg-mindflow-purple text-white text-lg py-6"
               disabled={isLoadingAI}
-              aria-label="Start Journaling Session"
+              aria-label={t('startJournalingSession')}
             >
-              {isLoadingAI ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Start Journaling Session"}
+              {isLoadingAI ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t('startJournalingSession')}
             </Button>
           </motion.div>
         ) : (
           <div className="space-y-6">
-            {/* Progress Bar */}
             {!aiAnalysis && !isPaused && (
-              <div className="w-full bg-white/10 rounded-full h-2.5 mb-4" role="progressbar" aria-valuenow={questionCount} aria-valuemin={0} aria-valuemax={maxQuestions} aria-label={`Question progress: ${questionCount} of ${maxQuestions}`}>
+              <div className="w-full bg-white/10 rounded-full h-2.5 mb-4" role="progressbar" aria-valuenow={questionCount} aria-valuemin={0} aria-valuemax={maxQuestions} aria-label={t('questionProgress', questionCount, maxQuestions)}>
                 <div
                   className="bg-mindflow-blue h-2.5 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${(questionCount / maxQuestions) * 100}%` }}
@@ -206,10 +203,10 @@ const JournalSession: React.FC = () => {
                 role="region"
                 aria-labelledby="paused-session-heading"
               >
-                <h3 id="paused-session-heading" className="text-xl font-semibold mb-2">Session Paused</h3>
-                <p>Your journaling session is currently paused. All progress has been saved.</p>
-                <Button onClick={resumeSession} className="mt-4 w-full bg-mindflow-blue hover:bg-mindflow-purple text-white" aria-label="Resume Session">
-                  Resume Session
+                <h3 id="paused-session-heading" className="text-xl font-semibold mb-2">{t('sessionPaused')}</h3>
+                <p>{t('sessionPausedMessage')}</p>
+                <Button onClick={resumeSession} className="mt-4 w-full bg-mindflow-blue hover:bg-mindflow-purple text-white" aria-label={t('resumeSession')}>
+                  {t('resumeSession')}
                 </Button>
               </motion.div>
             ) : aiAnalysis ? (
@@ -221,15 +218,14 @@ const JournalSession: React.FC = () => {
                 role="region"
                 aria-labelledby="ai-analysis-heading"
               >
-                <h3 id="ai-analysis-heading" className="text-xl font-semibold mb-2">AI Analysis:</h3>
+                <h3 id="ai-analysis-heading" className="text-xl font-semibold mb-2">{t('aiAnalysis')}</h3>
                 <p>{aiAnalysis}</p>
-                <Button onClick={() => window.location.reload()} className="mt-4 w-full bg-mindflow-blue hover:bg-mindflow-purple text-white" aria-label="Start New Session">
-                  Start New Session
+                <Button onClick={() => window.location.reload()} className="mt-4 w-full bg-mindflow-blue hover:bg-mindflow-purple text-white" aria-label={t('startNewSession')}>
+                  {t('startNewSession')}
                 </Button>
               </motion.div>
             ) : (
               <>
-                {/* Conversation Interface */}
                 <div className="h-64 overflow-y-auto p-4 bg-white/5 rounded-lg border border-white/10 mb-4 text-left flex flex-col gap-4 scrollbar-hide" aria-live="polite" aria-atomic="false">
                   <AnimatePresence initial={false}>
                     {conversationHistory.map((msg, index) => (
@@ -261,24 +257,23 @@ const JournalSession: React.FC = () => {
                         variants={messageVariants}
                         className="flex justify-start"
                       >
-                        <div className="max-w-[80%] p-3 rounded-lg bg-white/10 text-white flex items-center gap-2" role="status" aria-label="AI is thinking">
-                          <Loader2 className="h-4 w-4 animate-spin" /> AI is thinking...
+                        <div className="max-w-[80%] p-3 rounded-lg bg-white/10 text-white flex items-center gap-2" role="status" aria-label={t('aiIsThinking')}>
+                          <Loader2 className="h-4 w-4 animate-spin" /> {t('aiIsThinking')}
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  <div ref={conversationEndRef} /> {/* Scroll target */}
+                  <div ref={conversationEndRef} />
                 </div>
 
-                {/* Question Card */}
                 <AnimatePresence mode="wait">
                   <motion.p
-                    key={currentQuestion} // Key change for re-animation
+                    key={currentQuestion}
                     initial="hidden"
                     animate="visible"
                     exit="exit"
                     variants={questionVariants}
-                    className="text-white/90 text-xl font-semibold min-h-[3rem]" // min-h to prevent layout shift
+                    className="text-white/90 text-xl font-semibold min-h-[3rem]"
                     aria-live="assertive"
                     aria-atomic="true"
                   >
@@ -286,10 +281,9 @@ const JournalSession: React.FC = () => {
                   </motion.p>
                 </AnimatePresence>
                 <p className="text-sm text-white/70 mb-4" aria-live="polite">
-                  Question {questionCount} of {maxQuestions}
+                  {t('questionOfMax', questionCount, maxQuestions)}
                 </p>
 
-                {/* Response Input */}
                 <ResponseInput
                   value={userResponse}
                   onChange={setUserResponse}
@@ -301,11 +295,10 @@ const JournalSession: React.FC = () => {
                   disabled={isPaused}
                 />
 
-                {/* Session Controls */}
                 <SessionControls
                   isSessionActive={isSessionActive}
                   sessionType={sessionType}
-                  onSessionTypeChange={setSelectedSessionType} // This won't be used when active, but required by prop
+                  onSessionTypeChange={setSelectedSessionType}
                   questionCount={questionCount}
                   maxQuestions={maxQuestions}
                   isLoadingAI={isLoadingAI}

@@ -5,11 +5,13 @@ import { Label } from '@/components/ui/label';
 import { useSession } from '@/contexts/SessionContext';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import { toast } from 'sonner';
-import { Loader2, BellRing } from 'lucide-react'; // Import BellRing icon
-import { Button } from '@/components/ui/button'; // Import Button
+import { Loader2, BellRing } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/i18n/i18n';
 
 const SettingsPage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
+  const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
@@ -33,7 +35,7 @@ const SettingsPage: React.FC = () => {
 
   const handleNotificationsToggle = async (checked: boolean) => {
     if (!user) {
-      toast.error("Please log in to manage notification settings.");
+      toast.error(t('errorLoginToManageNotifications'));
       return;
     }
 
@@ -49,7 +51,6 @@ const SettingsPage: React.FC = () => {
     if (success) {
       setNotificationsEnabled(checked);
     } else {
-      // Revert toggle if action failed
       setNotificationsEnabled(!checked);
     }
     setIsLoadingNotifications(false);
@@ -57,25 +58,25 @@ const SettingsPage: React.FC = () => {
 
   const handleSendTestNotification = async () => {
     if (!user) {
-      toast.error("Please log in to send a test notification.");
+      toast.error(t('errorLoginToManageNotifications'));
       return;
     }
     if (!notificationsEnabled) {
-      toast.info("Please enable push notifications first.");
+      toast.info(t('infoEnableNotificationsFirst'));
       return;
     }
 
     setIsSendingTestNotification(true);
     const success = await pushNotificationService.sendTestNotification(
       user.id,
-      "MindFlow Test Notification",
-      "This is a test notification from your MindFlow app!",
-      "/dashboard" // Optional: URL to open when clicked
+      t('mindFlowTestNotification'),
+      t('testNotificationBody'),
+      "/dashboard"
     );
     if (success) {
-      toast.success("Test notification request sent. Check your device!");
+      toast.success(t('testNotificationSent'));
     } else {
-      toast.error("Failed to send test notification.");
+      toast.error(t('errorSendingTestNotification'));
     }
     setIsSendingTestNotification(false);
   };
@@ -83,21 +84,19 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] p-4">
       <GlassCard className="w-full max-w-2xl text-center">
-        <h1 className="text-4xl font-bold mb-4 text-white">Settings</h1>
-        <p className="text-lg text-white/80">Manage your app preferences here.</p>
+        <h1 className="text-4xl font-bold mb-4 text-white">{t('settings')}</h1>
+        <p className="text-lg text-white/80">{t('managePreferences')}</p>
         
         <div className="mt-8 space-y-6 text-white/90 text-left">
-          {/* Placeholder for other settings */}
           <div className="flex items-center justify-between">
-            <p>Language: English</p>
+            <p>{t('language')}: English</p>
           </div>
           <div className="flex items-center justify-between">
-            <p>Theme: Dark</p>
+            <p>{t('theme')}: Dark</p>
           </div>
 
-          {/* Push Notifications Toggle */}
           <div className="flex items-center justify-between">
-            <Label htmlFor="push-notifications" className="text-lg">Push Notifications</Label>
+            <Label htmlFor="push-notifications" className="text-lg">{t('pushNotifications')}</Label>
             {isLoadingNotifications ? (
               <Loader2 className="h-5 w-5 animate-spin text-mindflow-blue" />
             ) : (
@@ -111,7 +110,6 @@ const SettingsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Send Test Notification Button */}
           {notificationsEnabled && (
             <Button
               onClick={handleSendTestNotification}
@@ -123,7 +121,7 @@ const SettingsPage: React.FC = () => {
               ) : (
                 <BellRing className="mr-2 h-5 w-5" />
               )}
-              Send Test Notification
+              {t('sendTestNotification')}
             </Button>
           )}
         </div>

@@ -1,11 +1,10 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { env } from '@/lib/env';
+import { useTranslation } from '@/i18n/i18n.tsx'; // Import useTranslation
 
-// Initialize the Gemini client
 const genAI = new GoogleGenerativeAI(env.geminiApiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Configure safety settings for content filtering
 const safetySettings = [
   {
     category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -25,7 +24,6 @@ const safetySettings = [
   },
 ];
 
-// Fallback questions for when the API is unavailable or offline
 const fallbackQuestions: string[] = [
   "What's one thing that brought you joy today?",
   "If you could change one thing about your day, what would it be?",
@@ -79,12 +77,11 @@ const fallbackQuestions: string[] = [
   "What's a feeling you're grateful for, even if it's challenging?",
 ];
 
-// Helper for retry logic with exponential backoff
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
   try {
     return await fn();
   } catch (error) {
-    if (retries > 0 && navigator.onLine) { // Only retry if online
+    if (retries > 0 && navigator.onLine) {
       console.warn(`Retrying after error: ${error}. Retries left: ${retries}`);
       await new Promise(res => setTimeout(res, delay));
       return withRetry(fn, retries - 1, delay * 2);
@@ -93,12 +90,8 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
   }
 }
 
-/**
- * Generates a thoughtful journaling question based on the user's mood.
- * @param mood A number from 1-10 representing the user's mood (1=very sad, 10=very happy).
- * @returns A promise that resolves to a journaling question string.
- */
 export async function generateQuestion(mood: number): Promise<string> {
+  const { t } = useTranslation();
   if (!navigator.onLine) {
     console.log("Offline: Using fallback questions.");
     return fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
@@ -119,17 +112,13 @@ export async function generateQuestion(mood: number): Promise<string> {
   }
 }
 
-/**
- * Analyzes a user's journal response for insights.
- * @param response The user's journal entry text.
- * @returns A promise that resolves to an analysis string.
- */
 export async function analyzeResponse(response: string): Promise<string> {
+  const { t } = useTranslation();
   if (!response.trim()) {
-    return "Please write something before I can analyze it!";
+    return t('pleaseWriteSomething');
   }
   if (!navigator.onLine) {
-    return "You are offline. Unable to analyze your response at this moment.";
+    return t('errorAnalyzingResponseOffline');
   }
 
   const prompt = `You are an AI journaling assistant for users in Myanmar. Analyze the following journal entry for key themes, emotions, and potential patterns. Provide a concise, friendly, and non-clinical summary of insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Avoid making direct recommendations or interpretations that sound like therapy. Focus on observations. Journal entry: "${response}"`;
@@ -143,21 +132,17 @@ export async function analyzeResponse(response: string): Promise<string> {
     return result;
   } catch (error) {
     console.error("Error analyzing response from Gemini API:", error);
-    return "I'm having trouble analyzing your response right now. Please try again later.";
+    return t('errorAnalyzingResponse');
   }
 }
 
-/**
- * Suggests the next question in a conversation based on history.
- * @param conversation An array of message objects with role and parts.
- * @returns A promise that resolves to a follow-up question string.
- */
 export async function suggestFollowUp(conversation: { role: string; parts: { text: string }[] }[]): Promise<string> {
+  const { t } = useTranslation();
   if (!navigator.onLine) {
-    return "You are offline. Unable to suggest a follow-up question.";
+    return t('errorSuggestingFollowUpOffline');
   }
   if (conversation.length === 0) {
-    return generateQuestion(5); // Default to a neutral mood question if no history
+    return generateQuestion(5);
   }
 
   const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language. Conversation: ${JSON.stringify(conversation)}`;
@@ -171,21 +156,17 @@ export async function suggestFollowUp(conversation: { role: string; parts: { tex
     return result;
   } catch (error) {
     console.error("Error suggesting follow-up from Gemini API:", error);
-    return "What else is on your mind?"; // Generic fallback
+    return t('whatElseOnMind');
   }
 }
 
-/**
- * Generates a weekly summary of journal patterns and insights.
- * @param journalEntries An array of user's journal entry texts.
- * @returns A promise that resolves to a summary of insights.
- */
 export async function generateInsights(journalEntries: string[]): Promise<string> {
+  const { t } = useTranslation();
   if (journalEntries.length === 0) {
-    return "No journal entries to generate insights from yet. Start writing!";
+    return t('noJournalEntriesForInsights');
   }
   if (!navigator.onLine) {
-    return "You are offline. Unable to generate insights at this moment.";
+    return t('errorGeneratingInsightsOffline');
   }
 
   const combinedEntries = journalEntries.join("\n---\n");
@@ -200,21 +181,17 @@ export async function generateInsights(journalEntries: string[]): Promise<string
     return result;
   } catch (error) {
     console.error("Error generating insights from Gemini API:", error);
-    return "I'm having trouble generating your insights right now. Please try again later.";
+    return t('errorGeneratingInsights');
   }
 }
 
-/**
- * Generates personalized recommendations based on journal entries.
- * @param journalEntries An array of user's journal entry texts.
- * @returns A promise that resolves to an array of personalized recommendation strings.
- */
 export async function generateRecommendations(journalEntries: string[]): Promise<string[]> {
+  const { t } = useTranslation();
   if (journalEntries.length === 0) {
-    return ["Write your first entry to get personalized recommendations."];
+    return [t('writeFirstEntryForRecommendations')];
   }
   if (!navigator.onLine) {
-    return ["You are offline. Unable to generate recommendations at this moment."];
+    return [t('errorGeneratingRecommendationsOffline')];
   }
 
   const combinedEntries = journalEntries.join("\n---\n");
@@ -230,16 +207,6 @@ export async function generateRecommendations(journalEntries: string[]): Promise
     return result;
   } catch (error) {
     console.error("Error generating recommendations from Gemini API:", error);
-    return ["I'm having trouble generating recommendations right now. Please try again later."];
+    return [t('errorGeneratingRecommendations')];
   }
 }
-
-// --- Privacy Note ---
-// This service processes user input for analysis and question generation.
-// It does not store sensitive user data directly within the API calls or on the Gemini service.
-// Ensure that any data sent to the API is anonymized or handled according to your privacy policy.
-
-// --- Rate Limiting Note ---
-// Gemini API has rate limits. For a production application, consider implementing
-// client-side rate limiting (e.g., using a debounce or throttle mechanism)
-// or server-side rate limiting to prevent exceeding quotas.

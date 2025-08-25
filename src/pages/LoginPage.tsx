@@ -6,15 +6,17 @@ import GradientBackground from '@/components/GradientBackground';
 import GlassCard from '@/components/GlassCard';
 import { useSession } from '@/contexts/SessionContext';
 import { Navigate } from 'react-router-dom';
+import { useTranslation } from '@/i18n/i18n';
 
 const LoginPage: React.FC = () => {
   const { session, isLoading } = useSession();
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
       <GradientBackground>
         <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">Loading authentication...</p>
+          <p className="text-white text-xl">{t('loadingAuthentication')}</p>
         </div>
       </GradientBackground>
     );
@@ -28,7 +30,7 @@ const LoginPage: React.FC = () => {
     <GradientBackground>
       <div className="min-h-screen flex items-center justify-center p-4">
         <GlassCard className="w-full max-w-md">
-          <h1 className="text-4xl font-bold text-center text-white mb-8">Welcome to MindFlow</h1>
+          <h1 className="text-4xl font-bold text-center text-white mb-8">{t('welcomeToMindFlow')}</h1>
           <Auth
             supabaseClient={supabase}
             appearance={{

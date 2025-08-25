@@ -45,3 +45,5 @@ type SpeechRecognitionErrorCode =
   | "service-not-allowed"
   | "bad-grammar"
   | "language-not-supported";
+
+declare module '*.json';

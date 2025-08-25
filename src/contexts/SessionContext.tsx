@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
+import { useTranslation } from '@/i18n/i18n.tsx';
 
 interface SessionContextType {
   session: Session | null;
@@ -17,6 +18,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
@@ -24,13 +26,13 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         setSession(currentSession);
         setUser(currentSession?.user || null);
         if (currentSession && window.location.pathname === '/login') {
-          showSuccess("Welcome back!");
+          showSuccess(t('welcomeBackToast'));
           navigate('/dashboard');
         }
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
-        showSuccess("You have been signed out.");
+        showSuccess(t('signedOutToast'));
         navigate('/login');
       } else if (event === 'INITIAL_SESSION') {
         setSession(currentSession);
@@ -53,7 +55,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, t]);
 
   return (
     <SessionContext.Provider value={{ session, user, isLoading }}>

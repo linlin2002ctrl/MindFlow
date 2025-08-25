@@ -1,7 +1,8 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { showError } from '@/utils/toast';
-import { storageService } from './storageService'; // Import storageService
+import { storageService } from './storageService';
+import { useTranslation } from '@/i18n/i18n'; // Import useTranslation
 
 export interface Profile {
   id: string;
@@ -35,13 +36,14 @@ export const userService = {
    * @returns {Promise<Profile | null>}
    */
   getProfile: async (userId: string): Promise<Profile | null> => {
+    const { t } = useTranslation();
     const localProfile = await storageService.getUserProfile(userId);
     if (localProfile) return localProfile;
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('profiles').select('*').eq('id', userId).maybeSingle() // Changed to maybeSingle()
+          await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
         );
         if (error) throw error;
         if (data) {
@@ -50,7 +52,7 @@ export const userService = {
         return data;
       } catch (error: any) {
         console.error("Error fetching user profile from Supabase:", error.message);
-        showError(`Failed to fetch profile from cloud: ${error.message}`);
+        showError(t('errorFetchingProfileFromCloud', error.message));
         return null;
       }
     }
@@ -64,6 +66,7 @@ export const userService = {
    * @returns {Promise<Profile | null>}
    */
   updateProfile: async (userId: string, updateData: Partial<Omit<Profile, 'id' | 'updated_at'>>): Promise<Profile | null> => {
+    const { t } = useTranslation();
     const existingProfile = await storageService.getUserProfile(userId);
     const updatedProfile = { ...existingProfile, ...updateData, id: userId, updated_at: new Date().toISOString() };
 
@@ -78,8 +81,8 @@ export const userService = {
         return data;
       } catch (error: any) {
         console.error("Error updating user profile in Supabase:", error.message);
-        showError(`Failed to update profile to cloud: ${error.message}. It will sync when online.`);
-        return updatedProfile; // Return locally updated profile
+        showError(t('errorUpdatingProfileToCloud', error.message));
+        return updatedProfile;
       }
     }
     return updatedProfile;
@@ -91,13 +94,14 @@ export const userService = {
    * @returns {Promise<UserPreferences | null>}
    */
   getPreferences: async (userId: string): Promise<UserPreferences | null> => {
+    const { t } = useTranslation();
     const localPreferences = await storageService.getUserPreferences(userId);
     if (localPreferences) return localPreferences;
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle() // Changed to maybeSingle()
+          await supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle()
         );
         if (error) throw error;
         if (data) {
@@ -106,7 +110,7 @@ export const userService = {
         return data;
       } catch (error: any) {
         console.error("Error fetching user preferences from Supabase:", error.message);
-        showError(`Failed to fetch preferences from cloud: ${error.message}`);
+        showError(t('errorFetchingPreferencesFromCloud', error.message));
         return null;
       }
     }
@@ -120,6 +124,7 @@ export const userService = {
    * @returns {Promise<UserPreferences | null>}
    */
   updatePreferences: async (userId: string, updateData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<UserPreferences | null> => {
+    const { t } = useTranslation();
     const existingPreferences = await storageService.getUserPreferences(userId);
     const updatedPreferences = { ...existingPreferences, ...updateData, user_id: userId, updated_at: new Date().toISOString() };
 
@@ -134,8 +139,8 @@ export const userService = {
         return data;
       } catch (error: any) {
         console.error("Error updating user preferences in Supabase:", error.message);
-        showError(`Failed to update preferences to cloud: ${error.message}. It will sync when online.`);
-        return updatedPreferences; // Return locally updated preferences
+        showError(t('errorUpdatingPreferencesToCloud', error.message));
+        return updatedPreferences;
       }
     }
     return updatedPreferences;

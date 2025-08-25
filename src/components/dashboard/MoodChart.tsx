@@ -1,11 +1,11 @@
 import React from 'react';
 import GlassCard from '@/components/GlassCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format } from 'date-fns';
+import { useTranslation } from '@/i18n/i18n';
 
 interface MoodDataPoint {
-  name: string; // e.g., 'Mon', 'Tue', or 'MMM dd'
-  moodScore: number; // e.g., 1 for Sad, 2 for Neutral, 3 for Happy, 4 for Joyful, 0 for Angry
+  name: string;
+  moodScore: number;
 }
 
 interface MoodChartProps {
@@ -13,43 +13,43 @@ interface MoodChartProps {
 }
 
 const MoodChart: React.FC<MoodChartProps> = ({ data }) => {
+  const { t } = useTranslation();
+
   const formatMoodLabel = (value: number) => {
     switch (value) {
-      case 0: return 'Angry';
-      case 1: return 'Sad';
-      case 2: return 'Neutral';
-      case 3: return 'Happy';
-      case 4: return 'Joyful';
-      case 5: return 'Neutral'; // Assuming 5 is also neutral for 1-10 scale
-      case 6: return 'Good';
-      case 7: return 'Great';
-      case 8: return 'Happy';
-      case 9: return 'Fantastic';
-      case 10: return 'Amazing';
+      case 0: return t('angry');
+      case 1: return t('sad');
+      case 2: return t('neutral');
+      case 3: return t('happy');
+      case 4: return t('joyful');
+      case 5: return t('neutral');
+      case 6: return t('good');
+      case 7: return t('great');
+      case 8: return t('happy');
+      case 9: return t('fantastic');
+      case 10: return t('amazing');
       default: return '';
     }
   };
 
-  // Determine min/max for Y-axis based on actual data, or default to 0-10
   const moodScores = data.map(d => d.moodScore);
   const minY = moodScores.length > 0 ? Math.min(...moodScores) : 0;
   const maxY = moodScores.length > 0 ? Math.max(...moodScores) : 10;
-  const yDomain = [Math.floor(minY / 1) * 1, Math.ceil(maxY / 1) * 1]; // Round to nearest integer for ticks
+  const yDomain = [Math.floor(minY / 1) * 1, Math.ceil(maxY / 1) * 1];
 
-  // Generate ticks for Y-axis based on the actual range, ensuring at least 3-5 ticks
   const generateTicks = (min: number, max: number) => {
     const ticks = [];
     const range = max - min;
-    if (range <= 4) { // Small range, show all integer ticks
+    if (range <= 4) {
       for (let i = min; i <= max; i++) {
         ticks.push(i);
       }
-    } else { // Larger range, show fewer ticks
-      const step = Math.ceil(range / 4); // Aim for about 5 ticks
+    } else {
+      const step = Math.ceil(range / 4);
       for (let i = min; i <= max; i += step) {
         ticks.push(i);
       }
-      if (!ticks.includes(max)) ticks.push(max); // Ensure max is included
+      if (!ticks.includes(max)) ticks.push(max);
     }
     return ticks;
   };
@@ -58,7 +58,7 @@ const MoodChart: React.FC<MoodChartProps> = ({ data }) => {
 
   return (
     <GlassCard className="p-6">
-      <h3 className="text-2xl font-semibold text-white mb-4">Mood Trend Over Time</h3>
+      <h3 className="text-2xl font-semibold text-white mb-4">{t('moodTrendOverTime')}</h3>
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -82,7 +82,7 @@ const MoodChart: React.FC<MoodChartProps> = ({ data }) => {
               contentStyle={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }}
               labelStyle={{ color: 'white' }}
               itemStyle={{ color: 'white' }}
-              formatter={(value: number) => [formatMoodLabel(value), 'Mood Score']}
+              formatter={(value: number) => [formatMoodLabel(value), t('moodScore')]}
             />
             <Line type="monotone" dataKey="moodScore" stroke="#8b5cf6" strokeWidth={3} dot={{ stroke: '#6366f1', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
           </LineChart>

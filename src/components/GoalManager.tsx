@@ -14,6 +14,7 @@ import { goalsService, UserGoal, GoalCategory, GoalType, GoalStatus } from '@/se
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useTranslation } from '@/i18n/i18n';
 
 const goalCategories: GoalCategory[] = ['Emotional', 'Career', 'Health', 'Relationships', 'General'];
 const goalTypes: GoalType[] = ['Habit Goal', 'Mood Goal', 'Insight Goal', 'Growth Goal', 'Wellness Goal', 'Other'];
@@ -21,6 +22,7 @@ const goalStatuses: GoalStatus[] = ['active', 'completed', 'archived'];
 
 const GoalManager: React.FC = () => {
   const { user } = useSession();
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<UserGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,11 +60,11 @@ const GoalManager: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      toast.error("You must be logged in to create a goal.");
+      toast.error(t('errorLoginToCreateGoal'));
       return;
     }
     if (!newGoal.title.trim()) {
-      toast.error("Goal title cannot be empty.");
+      toast.error(t('errorGoalTitleEmpty'));
       return;
     }
 
@@ -79,11 +81,11 @@ const GoalManager: React.FC = () => {
       if (editingGoalId) {
         const updatedGoal = await goalsService.updateGoal(editingGoalId, goalData);
         if (updatedGoal) {
-          toast.success("Goal updated successfully!");
+          toast.success(t('goalUpdatedSuccess'));
           setGoals(goals.map(g => (g.id === editingGoalId ? { ...g, ...updatedGoal } : g)));
-          if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+          if (navigator.vibrate) navigator.vibrate(50);
         } else {
-          toast.error("Failed to update goal.");
+          toast.error(t('errorUpdatingGoal'));
         }
       } else {
         const createdGoal = await goalsService.createGoal({
@@ -94,24 +96,24 @@ const GoalManager: React.FC = () => {
           related_journal_entries: [],
         });
         if (createdGoal) {
-          toast.success("Goal created successfully!");
+          toast.success(t('goalCreatedSuccess'));
           setGoals(prev => [createdGoal, ...prev]);
-          if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+          if (navigator.vibrate) navigator.vibrate(50);
         } else {
-          toast.error("Failed to create goal.");
+          toast.error(t('errorCreatingGoal'));
         }
       }
       resetForm();
     } catch (error) {
       console.error("Error submitting goal:", error);
-      toast.error("An unexpected error occurred.");
+      toast.error(t('errorUnexpectedSaving'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEdit = (goal: UserGoal) => {
-    if (navigator.vibrate) navigator.vibrate(30); // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(30);
     setEditingGoalId(goal.id);
     setNewGoal({
       title: goal.title,
@@ -128,15 +130,15 @@ const GoalManager: React.FC = () => {
     try {
       const deleted = await goalsService.deleteGoal(goalId);
       if (deleted) {
-        toast.success("Goal deleted successfully!");
+        toast.success(t('goalDeletedSuccess'));
         setGoals(goals.filter(g => g.id !== goalId));
-        if (navigator.vibrate) navigator.vibrate(70); // Haptic feedback for deletion
+        if (navigator.vibrate) navigator.vibrate(70);
       } else {
-        toast.error("Failed to delete goal.");
+        toast.error(t('errorDeletingGoal'));
       }
     } catch (error) {
       console.error("Error deleting goal:", error);
-      toast.error("An unexpected error occurred.");
+      toast.error(t('errorUnexpectedSaving'));
     } finally {
       setIsLoading(false);
     }
@@ -150,10 +152,10 @@ const GoalManager: React.FC = () => {
     const updatedGoal = await goalsService.updateGoal(goalId, { progress: newProgress });
     if (updatedGoal) {
       setGoals(goals.map(g => (g.id === goalId ? { ...g, progress: newProgress } : g)));
-      toast.success("Goal progress updated!");
-      if (navigator.vibrate) navigator.vibrate(30); // Haptic feedback
+      toast.success(t('goalProgressUpdated'));
+      if (navigator.vibrate) navigator.vibrate(30);
     } else {
-      toast.error("Failed to update progress.");
+      toast.error(t('errorUpdatingProgress'));
     }
   };
 
@@ -164,12 +166,12 @@ const GoalManager: React.FC = () => {
 
     const updatedGoal = await goalsService.updateGoal(goalId, { status: newStatus });
     if (updatedGoal) {
-      toast.success(`Goal marked as ${newStatus}!`);
-      setGoals(goals.filter(g => g.id !== activeTab)); // Remove from current tab
-      fetchGoals(activeTab); // Re-fetch to update list if needed
-      if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+      toast.success(t('goalStatusUpdated', newStatus));
+      setGoals(goals.filter(g => g.id !== activeTab));
+      fetchGoals(activeTab);
+      if (navigator.vibrate) navigator.vibrate(50);
     } else {
-      toast.error("Failed to update goal status.");
+      toast.error(t('errorUpdatingGoalStatus'));
     }
   };
 
@@ -189,47 +191,46 @@ const GoalManager: React.FC = () => {
       <div className="w-full max-w-4xl space-y-6">
         <GlassCard className="text-center p-6">
           <h1 className="text-4xl font-bold mb-4 text-white flex items-center justify-center gap-2">
-            <PlusCircle className="h-8 w-8 text-mindflow-blue" /> Goal Manager
+            <PlusCircle className="h-8 w-8 text-mindflow-blue" /> {t('goalManager')}
           </h1>
           <p className="text-lg text-white/80">
-            Set, track, and achieve your personal growth goals.
+            {t('goalManagerDescription')}
           </p>
         </GlassCard>
 
-        {/* Goal Creation/Edit Form */}
         <GlassCard className="p-6">
-          <h2 className="text-2xl font-semibold text-white mb-4">{editingGoalId ? "Edit Goal" : "Create New Goal"}</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4">{editingGoalId ? t('editGoal') : t('createNewGoal')}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="title" className="block text-white/90 text-sm font-medium mb-1">Goal Title</label>
+              <label htmlFor="title" className="block text-white/90 text-sm font-medium mb-1">{t('goalTitle')}</label>
               <Input
                 id="title"
                 name="title"
                 value={newGoal.title}
                 onChange={handleInputChange}
-                placeholder="e.g., Journal daily for 30 days"
+                placeholder={t('goalTitlePlaceholder')}
                 className="bg-white/10 border border-white/20 text-white placeholder:text-white/60"
                 disabled={isSubmitting}
               />
             </div>
             <div>
-              <label htmlFor="description" className="block text-white/90 text-sm font-medium mb-1">Description (Optional)</label>
+              <label htmlFor="description" className="block text-white/90 text-sm font-medium mb-1">{t('descriptionOptional')}</label>
               <Textarea
                 id="description"
                 name="description"
                 value={newGoal.description}
                 onChange={handleInputChange}
-                placeholder="Add more details about your goal"
+                placeholder={t('descriptionPlaceholder')}
                 className="bg-white/10 border border-white/20 text-white placeholder:text-white/60"
                 disabled={isSubmitting}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="category" className="block text-white/90 text-sm font-medium mb-1">Category</label>
+                <label htmlFor="category" className="block text-white/90 text-sm font-medium mb-1">{t('category')}</label>
                 <Select value={newGoal.category} onValueChange={(value: GoalCategory) => handleSelectChange('category', value)} disabled={isSubmitting}>
                   <SelectTrigger id="category" className="w-full bg-white/10 border border-white/20 text-white">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t('selectCategory')} />
                   </SelectTrigger>
                   <SelectContent className="bg-mindflow-purple/90 border border-white/20 text-white">
                     {goalCategories.map(cat => (
@@ -239,10 +240,10 @@ const GoalManager: React.FC = () => {
                 </Select>
               </div>
               <div>
-                <label htmlFor="type" className="block text-white/90 text-sm font-medium mb-1">Type</label>
+                <label htmlFor="type" className="block text-white/90 text-sm font-medium mb-1">{t('type')}</label>
                 <Select value={newGoal.type} onValueChange={(value: GoalType) => handleSelectChange('type', value)} disabled={isSubmitting}>
                   <SelectTrigger id="type" className="w-full bg-white/10 border border-white/20 text-white">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder={t('selectType')} />
                   </SelectTrigger>
                   <SelectContent className="bg-mindflow-purple/90 border border-white/20 text-white">
                     {goalTypes.map(type => (
@@ -253,7 +254,7 @@ const GoalManager: React.FC = () => {
               </div>
             </div>
             <div>
-              <label htmlFor="target_date" className="block text-white/90 text-sm font-medium mb-1">Target Date (Optional)</label>
+              <label htmlFor="target_date" className="block text-white/90 text-sm font-medium mb-1">{t('targetDateOptional')}</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -265,7 +266,7 @@ const GoalManager: React.FC = () => {
                     disabled={isSubmitting}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newGoal.target_date ? format(newGoal.target_date, "PPP") : <span>Pick a date</span>}
+                    {newGoal.target_date ? format(newGoal.target_date, "PPP") : <span>{t('pickADate')}</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 bg-mindflow-purple/90 border border-white/20 text-white">
@@ -292,20 +293,19 @@ const GoalManager: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <Button type="submit" className="w-full bg-mindflow-blue hover:bg-mindflow-purple text-white" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (editingGoalId ? "Update Goal" : "Create Goal")}
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (editingGoalId ? t('updateGoal') : t('createGoal'))}
               </Button>
               {editingGoalId && (
                 <Button type="button" variant="outline" onClick={resetForm} className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20" disabled={isSubmitting}>
-                  Cancel Edit
+                  {t('cancelEdit')}
                 </Button>
               )}
             </div>
           </form>
         </GlassCard>
 
-        {/* Goal List */}
         <GlassCard className="p-6">
-          <h2 className="text-2xl font-semibold text-white mb-4">Your Goals</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4">{t('yourGoals')}</h2>
           <div className="flex justify-center gap-2 mb-6">
             {goalStatuses.map(status => (
               <Button
@@ -314,15 +314,15 @@ const GoalManager: React.FC = () => {
                 onClick={() => setActiveTab(status)}
                 className={cn("text-white hover:bg-white/20 capitalize", activeTab === status && "bg-white/20 text-mindflow-blue")}
               >
-                {status}
+                {t(status)}
               </Button>
             ))}
           </div>
 
           {isLoading ? (
-            <p className="text-white/70 text-center">Loading goals...</p>
+            <p className="text-white/70 text-center">{t('loadingGoals')}</p>
           ) : goals.length === 0 ? (
-            <p className="text-white/70 text-center">No {activeTab} goals yet. Start creating some!</p>
+            <p className="text-white/70 text-center">{t('noGoalsYet', t(activeTab))}</p>
           ) : (
             <div className="space-y-4">
               {goals.map((goal) => (
@@ -331,13 +331,13 @@ const GoalManager: React.FC = () => {
                     <h3 className="text-xl font-semibold text-white">{goal.title}</h3>
                     {goal.description && <p className="text-white/80 text-sm mt-1">{goal.description}</p>}
                     <div className="flex flex-wrap gap-2 mt-2 text-xs text-white/70">
-                      <span>Category: {goal.category}</span>
+                      <span>{t('categoryLabel', goal.category)}</span>
                       <span>•</span>
-                      <span>Type: {goal.type}</span>
+                      <span>{t('typeLabel', goal.type)}</span>
                       {goal.target_date && (
                         <>
                           <span>•</span>
-                          <span>Target: {format(new Date(goal.target_date), 'MMM dd, yyyy')}</span>
+                          <span>{t('targetLabel', format(new Date(goal.target_date), 'MMM dd, yyyy'))}</span>
                         </>
                       )}
                     </div>
@@ -348,30 +348,30 @@ const GoalManager: React.FC = () => {
                       <span className="text-white/90 text-sm">{goal.progress}%</span>
                     </div>
                     <div className="flex gap-2 mt-2">
-                      <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => handleEdit(goal)} aria-label="Edit goal">
+                      <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => handleEdit(goal)} aria-label={t('editGoalButton')}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/20" aria-label="Delete goal">
+                          <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/20" aria-label={t('deleteGoalButton')}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="bg-mindflow-purple/90 border border-white/20 text-white">
                           <AlertDialogHeader>
-                            <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogTitle className="text-white">{t('areYouSure')}</AlertDialogTitle>
                             <AlertDialogDescription className="text-white/80">
-                              This action cannot be undone. This will permanently delete your goal.
+                              {t('actionCannotBeUndone')}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel className="bg-white/10 text-white hover:bg-white/20 border-white/20">Cancel</AlertDialogCancel>
-                            <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => handleDelete(goal.id)}>Delete</AlertDialogAction>
+                            <AlertDialogCancel className="bg-white/10 text-white hover:bg-white/20 border-white/20">{t('cancel')}</AlertDialogCancel>
+                            <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => handleDelete(goal.id)}>{t('delete')}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                       {goal.status === 'active' && (
-                        <Button variant="ghost" size="icon" className="text-green-400 hover:bg-green-500/20" onClick={() => handleUpdateStatus(goal.id, 'completed')} aria-label="Mark goal as complete">
+                        <Button variant="ghost" size="icon" className="text-green-400 hover:bg-green-500/20" onClick={() => handleUpdateStatus(goal.id, 'completed')} aria-label={t('markGoalCompleteButton')}>
                           <CheckCircle2 className="h-4 w-4" />
                         </Button>
                       )}
