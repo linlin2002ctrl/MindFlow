@@ -52,13 +52,13 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
             </SheetTrigger>
             <SheetContent side="left" className="bg-mindflow-purple/90 border-r border-white/20 text-white">
               <nav className="flex flex-col gap-4 p-4">
-                <Link to="/dashboard" className="text-lg hover:text-mindflow-blue transition-colors">Dashboard</Link>
-                <Link to="/journal" className="text-lg hover:text-mindflow-blue transition-colors">Journal</Link>
-                <Link to="/mood-tracker" className="text-lg hover:text-mindflow-blue transition-colors">Mood Tracker</Link>
-                <Link to="/ai-conversation" className="text-lg hover:text-mindflow-blue transition-colors">AI Conversation</Link>
-                <Link to="/insights" className="text-lg hover:text-mindflow-blue transition-colors">Insights</Link>
-                <Link to="/goals" className="text-lg hover:text-mindflow-blue transition-colors">Goals</Link> {/* Added Goals link */}
-                <Link to="/settings" className="text-lg hover:text-mindflow-blue transition-colors">Settings</Link>
+                <Link to="/dashboard" className="text-lg hover:text-mindflow-blue transition-colors">ပင်မစာမျက်နှာ</Link>
+                <Link to="/journal" className="text-lg hover:text-mindflow-blue transition-colors">နေ့စဉ်မှတ်တမ်း</Link>
+                <Link to="/mood-tracker" className="text-lg hover:text-mindflow-blue transition-colors">စိတ်ခံစားမှုမှတ်တမ်း</Link>
+                <Link to="/ai-conversation" className="text-lg hover:text-mindflow-blue transition-colors">AI နှင့်စကားပြောခြင်း</Link>
+                <Link to="/insights" className="text-lg hover:text-mindflow-blue transition-colors">ထိုးထွင်းသိမြင်မှုများ</Link>
+                <Link to="/goals" className="text-lg hover:text-mindflow-blue transition-colors">ပန်းတိုင်များ</Link>
+                <Link to="/settings" className="text-lg hover:text-mindflow-blue transition-colors">ဆက်တင်များ</Link>
               </nav>
             </SheetContent>
           </Sheet>

@@ -7,11 +7,11 @@ const BottomNav: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/dashboard', icon: Home, label: 'Home' },
-    { path: '/journal', icon: Book, label: 'Journal' },
-    { path: '/insights', icon: BarChart, label: 'Insights' },
-    { path: '/goals', icon: Target, label: 'Goals' }, // Added Goals link
-    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/dashboard', icon: Home, label: 'ပင်မစာမျက်နှာ' },
+    { path: '/journal', icon: Book, label: 'နေ့စဉ်မှတ်တမ်း' },
+    { path: '/insights', icon: BarChart, label: 'ထိုးထွင်းသိမြင်မှုများ' },
+    { path: '/goals', icon: Target, label: 'ပန်းတိုင်များ' },
+    { path: '/settings', icon: Settings, label: 'ဆက်တင်များ' },
   ];
 
   return (

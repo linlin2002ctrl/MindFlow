@@ -24,13 +24,13 @@ const Sidebar: React.FC = () => {
   }, [user]);
 
   const navItems = [
-    { path: '/dashboard', icon: Home, label: 'Dashboard' },
-    { path: '/journal', icon: Book, label: 'Journal' },
-    { path: '/mood-tracker', icon: Smile, label: 'Mood Tracker' },
-    { path: '/ai-conversation', icon: MessageSquare, label: 'AI Conversation' },
-    { path: '/insights', icon: BarChart, label: 'Insights' },
-    { path: '/goals', icon: Target, label: 'Goals' }, // Added Goals link with Target icon
-    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/dashboard', icon: Home, label: 'ပင်မစာမျက်နှာ' },
+    { path: '/journal', icon: Book, label: 'နေ့စဉ်မှတ်တမ်း' },
+    { path: '/mood-tracker', icon: Smile, label: 'စိတ်ခံစားမှုမှတ်တမ်း' },
+    { path: '/ai-conversation', icon: MessageSquare, label: 'AI နှင့်စကားပြောခြင်း' },
+    { path: '/insights', icon: BarChart, label: 'ထိုးထွင်းသိမြင်မှုများ' },
+    { path: '/goals', icon: Target, label: 'ပန်းတိုင်များ' },
+    { path: '/settings', icon: Settings, label: 'ဆက်တင်များ' },
   ];
 
   return (

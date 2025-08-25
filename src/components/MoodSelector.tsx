@@ -10,16 +10,16 @@ interface MoodSelectorProps {
 }
 
 const moodLabels: { [key: number]: string } = {
-  1: "Terrible 😩",
-  2: "Bad 😞",
-  3: "Down 😔",
-  4: "Okay-ish 😟",
-  5: "Neutral 😐",
-  6: "Alright 🙂",
-  7: "Good 😊",
-  8: "Great 😄",
-  9: "Fantastic 😁",
-  10: "Amazing! ✨",
+  1: "စိတ်ဓါတ်ကျနေ 😩", // Feeling down
+  2: "စိတ်ဓါတ်ကျနေ 😩", // Feeling down
+  3: "စိတ်မကောင်းဖြစ်နေ 😞", // Not feeling good
+  4: "စိတ်မကောင်းဖြစ်နေ 😟", // Not feeling good
+  5: "သာမာန် 😐", // Normal/Okay
+  6: "သာမာန် 🙂", // Normal/Okay
+  7: "စိတ်ကောင်းနေ 😊", // Feeling good
+  8: "စိတ်ကောင်းနေ 😄", // Feeling good
+  9: "အလွန်ပျော်ရွှင်နေ 😁", // Very happy
+  10: "အလွန်ပျော်ရွှင်နေ ✨", // Very happy
 };
 
 const MoodSelector: React.FC<MoodSelectorProps> = ({ initialMood, onMoodChange, disabled }) => {

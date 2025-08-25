@@ -15,11 +15,11 @@ const MoodQuickCheck: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const moods = [
-    { key: 'joyful', icon: Laugh, label: 'Joyful', color: 'text-yellow-300', rating: 10 },
-    { key: 'happy', icon: Smile, label: 'Happy', color: 'text-green-400', rating: 8 },
-    { key: 'neutral', icon: Meh, label: 'Neutral', color: 'text-blue-300', rating: 5 },
-    { key: 'sad', icon: Frown, label: 'Sad', color: 'text-indigo-300', rating: 3 },
-    { key: 'angry', icon: Angry, label: 'Angry', color: 'text-red-400', rating: 1 },
+    { key: 'joyful', icon: Laugh, label: 'အလွန်ပျော်ရွှင်နေ', color: 'text-yellow-300', rating: 10 },
+    { key: 'happy', icon: Smile, label: 'စိတ်ကောင်းနေ', color: 'text-green-400', rating: 8 },
+    { key: 'neutral', icon: Meh, label: 'သာမာန်', color: 'text-blue-300', rating: 5 },
+    { key: 'sad', icon: Frown, label: 'စိတ်မကောင်းဖြစ်နေ', color: 'text-indigo-300', rating: 3 },
+    { key: 'angry', icon: Angry, label: 'စိတ်ဓါတ်ကျနေ', color: 'text-red-400', rating: 1 },
   ];
 
   const handleMoodSelect = async (mood: Mood) => {
@@ -79,7 +79,7 @@ const MoodQuickCheck: React.FC = () => {
         ))}
       </div>
       {selectedMood && (
-        <p className="text-white/80 mt-2">You've checked in as <span className="font-bold">{selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1)}</span>.</p>
+        <p className="text-white/80 mt-2">You've checked in as <span className="font-bold">{moods.find(m => m.key === selectedMood)?.label}</span>.</p>
       )}
       {isSaving && <p className="text-white/70 mt-2">Saving mood...</p>}
     </GlassCard>
