@@ -119,6 +119,11 @@
       padding-right: env(safe-area-inset-right);
       padding-bottom: env(safe-area-inset-bottom);
       padding-left: env(safe-area-inset-left);
+      
+      /* Apply UI/UX guidelines for Burmese typography */
+      text-rendering: optimizeLegibility; /* Prioritize visual quality and enable font features */
+      line-height: 1.6; /* Accommodate vertical stacking of Burmese glyphs, prevent overlap */
+      /* letter-spacing is generally not recommended for Burmese text unless for specific stylistic purposes */
     }
 
     /* Full-screen mode for JournalSession on small screens */
