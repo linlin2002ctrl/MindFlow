@@ -192,6 +192,9 @@ export const pushNotificationService = {
       const subscription = subscriptionRecord.subscription;
       const payload = { title, body, url };
 
+      // Get the current session to include the access token
+      const { data: { session } } = await supabase.auth.getSession();
+
       // Invoke the Edge Function to send the notification
       const edgeFunctionUrl = `https://jonovuoyxyzcqmpsqzdf.supabase.co/functions/v1/send-push-notification`; // Replace with your actual project ID and function name
       
@@ -199,7 +202,7 @@ export const pushNotificationService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`, // Include auth token if function requires it
+          'Authorization': `Bearer ${session?.access_token}`, // Include auth token if function requires it
         },
         body: JSON.stringify({ subscription, payload }),
       });
