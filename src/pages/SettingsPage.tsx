@@ -5,12 +5,14 @@ import { Label } from '@/components/ui/label';
 import { useSession } from '@/contexts/SessionContext';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, BellRing } from 'lucide-react'; // Import BellRing icon
+import { Button } from '@/components/ui/button'; // Import Button
 
 const SettingsPage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
+  const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
 
   useEffect(() => {
     const checkNotificationStatus = async () => {
@@ -53,6 +55,31 @@ const SettingsPage: React.FC = () => {
     setIsLoadingNotifications(false);
   };
 
+  const handleSendTestNotification = async () => {
+    if (!user) {
+      toast.error("Please log in to send a test notification.");
+      return;
+    }
+    if (!notificationsEnabled) {
+      toast.info("Please enable push notifications first.");
+      return;
+    }
+
+    setIsSendingTestNotification(true);
+    const success = await pushNotificationService.sendTestNotification(
+      user.id,
+      "MindFlow Test Notification",
+      "This is a test notification from your MindFlow app!",
+      "/dashboard" // Optional: URL to open when clicked
+    );
+    if (success) {
+      toast.success("Test notification request sent. Check your device!");
+    } else {
+      toast.error("Failed to send test notification.");
+    }
+    setIsSendingTestNotification(false);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] p-4">
       <GlassCard className="w-full max-w-2xl text-center">
@@ -83,6 +110,22 @@ const SettingsPage: React.FC = () => {
               />
             )}
           </div>
+
+          {/* Send Test Notification Button */}
+          {notificationsEnabled && (
+            <Button
+              onClick={handleSendTestNotification}
+              className="w-full bg-mindflow-blue hover:bg-mindflow-purple text-white mt-4"
+              disabled={isSendingTestNotification || isSessionLoading}
+            >
+              {isSendingTestNotification ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <BellRing className="mr-2 h-5 w-5" />
+              )}
+              Send Test Notification
+            </Button>
+          )}
         </div>
       </GlassCard>
     </div>

@@ -168,4 +168,54 @@ export const pushNotificationService = {
       return false;
     }
   },
+
+  /**
+   * Sends a test push notification to the current user via the Edge Function.
+   * This function assumes the user is already subscribed.
+   * @param {string} userId The ID of the authenticated user.
+   * @param {string} title The title of the notification.
+   * @param {string} body The body text of the notification.
+   * @param {string} [url='/'] The URL to open when the notification is clicked.
+   * @returns {Promise<boolean>} True if the notification was sent successfully, false otherwise.
+   */
+  sendTestNotification: async (userId: string, title: string, body: string, url: string = '/'): Promise<boolean> => {
+    try {
+      const { data: subscriptionRecord, error: fetchError } = await withSupabaseRetry(async () =>
+        await supabase.from('push_subscriptions').select('subscription').eq('user_id', userId).single()
+      );
+
+      if (fetchError || !subscriptionRecord) {
+        showError("Could not find an active push subscription for this user.");
+        return false;
+      }
+
+      const subscription = subscriptionRecord.subscription;
+      const payload = { title, body, url };
+
+      // Invoke the Edge Function to send the notification
+      const edgeFunctionUrl = `https://jonovuoyxyzcqmpsqzdf.supabase.co/functions/v1/send-push-notification`; // Replace with your actual project ID and function name
+      
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`, // Include auth token if function requires it
+        },
+        body: JSON.stringify({ subscription, payload }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send notification via Edge Function.');
+      }
+
+      showSuccess("Test notification sent successfully!");
+      return true;
+    } catch (error: any) {
+      console.error("Error sending test notification:", error);
+      showError(`Failed to send test notification: ${error.message}`);
+      return false;
+    }
+  },
 };
