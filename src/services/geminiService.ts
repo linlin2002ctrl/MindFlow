@@ -103,11 +103,19 @@ export async function generateQuestion(mood: number, t: (key: string, ...args: (
 
   const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Where appropriate, subtly incorporate Buddhist or traditional Myanmar cultural references. Based on the user's mood (1-10 scale, 1 being very sad, 10 being very happy), generate one short, open-ended, and engaging journaling question. Avoid clinical or therapy language. Keep it conversational and encouraging.${culturalContext} Mood: ${mood}`;
 
+  if (import.meta.env.DEV) {
+    console.log("Gemini Prompt (generateQuestion):", prompt);
+  }
+
   try {
     const result = await withRetry(async () => {
       const chat = model.startChat({ safetySettings });
       const response = await chat.sendMessage(prompt);
-      return response.response.text();
+      const text = response.response.text();
+      if (import.meta.env.DEV) {
+        console.log("Gemini Response (generateQuestion):", text);
+      }
+      return text;
     }, t);
     return result;
   } catch (error) {
@@ -144,11 +152,19 @@ export async function analyzeResponse(response: string, t: (key: string, ...args
 
   const prompt = `You are an AI journaling assistant for users in Myanmar. Analyze the following journal entry for key themes, emotions, and potential patterns. Provide a concise, friendly, and non-clinical summary of insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Avoid making direct recommendations or interpretations that sound like therapy. Focus on observations.${culturalPromptAdditions} Journal entry: "${response}"`;
 
+  if (import.meta.env.DEV) {
+    console.log("Gemini Prompt (analyzeResponse):", prompt);
+  }
+
   try {
     const result = await withRetry(async () => {
       const chat = model.startChat({ safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
-      return apiResponse.response.text();
+      const text = apiResponse.response.text();
+      if (import.meta.env.DEV) {
+        console.log("Gemini Response (analyzeResponse):", text);
+      }
+      return text;
     }, t);
     return result;
   } catch (error) {
@@ -187,11 +203,19 @@ export async function suggestFollowUp(conversation: { role: string; parts: { tex
 
   const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language.${culturalPromptAdditions} Conversation: ${JSON.stringify(conversation)}`;
 
+  if (import.meta.env.DEV) {
+    console.log("Gemini Prompt (suggestFollowUp):", prompt);
+  }
+
   try {
     const result = await withRetry(async () => {
       const chat = model.startChat({ history: conversation, safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
-      return apiResponse.response.text();
+      const text = apiResponse.response.text();
+      if (import.meta.env.DEV) {
+        console.log("Gemini Response (suggestFollowUp):", text);
+      }
+      return text;
     }, t);
     return result;
   } catch (error) {
@@ -211,11 +235,19 @@ export async function generateInsights(journalEntries: string[], t: (key: string
   const combinedEntries = journalEntries.join("\n---\n");
   const prompt = `You are an AI journaling assistant for users in Myanmar. Based on the following journal entries, identify overarching emotional patterns, recurring themes, and any notable trends over time. Provide a friendly, non-clinical summary of these insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Journal entries: "${combinedEntries}"`;
 
+  if (import.meta.env.DEV) {
+    console.log("Gemini Prompt (generateInsights):", prompt);
+  }
+
   try {
     const result = await withRetry(async () => {
       const chat = model.startChat({ safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
-      return apiResponse.response.text();
+      const text = apiResponse.response.text();
+      if (import.meta.env.DEV) {
+        console.log("Gemini Response (generateInsights):", text);
+      }
+      return text;
     }, t);
     return result;
   } catch (error) {
@@ -235,11 +267,18 @@ export async function generateRecommendations(journalEntries: string[], t: (key:
   const combinedEntries = journalEntries.join("\n---\n");
   const prompt = `You are an AI personal growth coach for users in Myanmar. Based on the following journal entries, provide 3-5 concise, actionable, and personalized recommendations to help the user with their well-being and journaling practice. Incorporate traditional Myanmar wellness concepts and community-centered advice where relevant. Focus on observations from their entries. Format the output as a numbered list. Journal entries: "${combinedEntries}"`;
 
+  if (import.meta.env.DEV) {
+    console.log("Gemini Prompt (generateRecommendations):", prompt);
+  }
+
   try {
     const result = await withRetry(async () => {
       const chat = model.startChat({ safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
       const text = apiResponse.response.text();
+      if (import.meta.env.DEV) {
+        console.log("Gemini Response (generateRecommendations):", text);
+      }
       return text.split('\n').filter(line => line.trim().length > 0 && (line.startsWith('-') || line.match(/^\d+\./))).map(line => line.replace(/^\d+\.\s*|-\s*/, '').trim());
     }, t);
     return result;
