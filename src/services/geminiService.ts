@@ -104,7 +104,7 @@ export async function generateQuestion(mood: number): Promise<string> {
     return fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
   }
 
-  const prompt = `You are a friendly, empathetic AI journaling companion. Based on the user's mood (1-10 scale, 1 being very sad, 10 being very happy), generate one short, open-ended, and engaging journaling question. Avoid clinical or therapy language. Keep it conversational and encouraging. Mood: ${mood}`;
+  const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Where appropriate, subtly incorporate Buddhist or traditional Myanmar cultural references. Based on the user's mood (1-10 scale, 1 being very sad, 10 being very happy), generate one short, open-ended, and engaging journaling question. Avoid clinical or therapy language. Keep it conversational and encouraging. Mood: ${mood}`;
 
   try {
     const result = await withRetry(async () => {
@@ -132,7 +132,7 @@ export async function analyzeResponse(response: string): Promise<string> {
     return "You are offline. Unable to analyze your response at this moment.";
   }
 
-  const prompt = `You are an AI journaling assistant. Analyze the following journal entry for key themes, emotions, and potential patterns. Provide a concise, friendly, and non-clinical summary of insights. Avoid making direct recommendations or interpretations that sound like therapy. Focus on observations. Journal entry: "${response}"`;
+  const prompt = `You are an AI journaling assistant for users in Myanmar. Analyze the following journal entry for key themes, emotions, and potential patterns. Provide a concise, friendly, and non-clinical summary of insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Avoid making direct recommendations or interpretations that sound like therapy. Focus on observations. Journal entry: "${response}"`;
 
   try {
     const result = await withRetry(async () => {
@@ -160,7 +160,7 @@ export async function suggestFollowUp(conversation: { role: string; parts: { tex
     return generateQuestion(5); // Default to a neutral mood question if no history
   }
 
-  const prompt = `You are a friendly AI journaling companion. Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language. Conversation: ${JSON.stringify(conversation)}`;
+  const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language. Conversation: ${JSON.stringify(conversation)}`;
 
   try {
     const result = await withRetry(async () => {
@@ -189,7 +189,7 @@ export async function generateInsights(journalEntries: string[]): Promise<string
   }
 
   const combinedEntries = journalEntries.join("\n---\n");
-  const prompt = `You are an AI journaling assistant. Based on the following journal entries, identify overarching emotional patterns, recurring themes, and any notable trends over time. Provide a friendly, non-clinical summary of these insights. Journal entries: "${combinedEntries}"`;
+  const prompt = `You are an AI journaling assistant for users in Myanmar. Based on the following journal entries, identify overarching emotional patterns, recurring themes, and any notable trends over time. Provide a friendly, non-clinical summary of these insights, subtly incorporating Buddhist or traditional Myanmar cultural perspectives and wellness concepts where appropriate. Journal entries: "${combinedEntries}"`;
 
   try {
     const result = await withRetry(async () => {
@@ -218,7 +218,7 @@ export async function generateRecommendations(journalEntries: string[]): Promise
   }
 
   const combinedEntries = journalEntries.join("\n---\n");
-  const prompt = `You are an AI personal growth coach. Based on the following journal entries, provide 3-5 concise, actionable, and personalized recommendations to help the user with their well-being and journaling practice. Focus on observations from their entries. Format the output as a numbered list. Journal entries: "${combinedEntries}"`;
+  const prompt = `You are an AI personal growth coach for users in Myanmar. Based on the following journal entries, provide 3-5 concise, actionable, and personalized recommendations to help the user with their well-being and journaling practice. Incorporate traditional Myanmar wellness concepts and community-centered advice where relevant. Focus on observations from their entries. Format the output as a numbered list. Journal entries: "${combinedEntries}"`;
 
   try {
     const result = await withRetry(async () => {
