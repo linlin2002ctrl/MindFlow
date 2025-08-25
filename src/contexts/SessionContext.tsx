@@ -4,11 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
 import { useTranslation } from '@/i18n/i18n.tsx';
+import { userService } from '@/services/userService'; // Removed UserPreferences import
 
 interface SessionContextType {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  // Removed fontPreference, isZawgyiUser, setFontPreference
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);

@@ -1,7 +1,6 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { storageService } from './storageService';
-// Removed: import { useTranslation } from '@/i18n/i18n';
 
 export interface Profile {
   id: string;
@@ -36,7 +35,7 @@ export const userService = {
    * @returns {Promise<Profile | null>}
    */
   getProfile: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<Profile | null> => {
-    const localProfile = await storageService.getUserProfile(userId); // Removed 't' parameter
+    const localProfile = await storageService.getUserProfile(userId);
     if (localProfile) return localProfile;
 
     if (navigator.onLine) {
@@ -66,7 +65,7 @@ export const userService = {
    * @returns {Promise<Profile | null>}
    */
   updateProfile: async (userId: string, updateData: Partial<Omit<Profile, 'id' | 'updated_at'>>, t: (key: string, ...args: (string | number)[]) => string): Promise<Profile | null> => {
-    const existingProfile = await storageService.getUserProfile(userId); // Removed 't' parameter
+    const existingProfile = await storageService.getUserProfile(userId);
     const updatedProfile = { ...existingProfile, ...updateData, id: userId, updated_at: new Date().toISOString() };
 
     await storageService.cacheUserProfile(updatedProfile, t);
@@ -94,7 +93,7 @@ export const userService = {
    * @returns {Promise<UserPreferences | null>}
    */
   getPreferences: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<UserPreferences | null> => {
-    const localPreferences = await storageService.getUserPreferences(userId); // No 't' needed for this specific storage call
+    const localPreferences = await storageService.getUserPreferences(userId);
     if (localPreferences) return localPreferences;
 
     if (navigator.onLine) {
@@ -124,7 +123,7 @@ export const userService = {
    * @returns {Promise<UserPreferences | null>}
    */
   updatePreferences: async (userId: string, updateData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>, t: (key: string, ...args: (string | number)[]) => string): Promise<UserPreferences | null> => {
-    const existingPreferences = await storageService.getUserPreferences(userId); // No 't' needed for this specific storage call
+    const existingPreferences = await storageService.getUserPreferences(userId);
     const updatedPreferences = { ...existingPreferences, ...updateData, user_id: userId, updated_at: new Date().toISOString() };
 
     await storageService.cacheUserPreferences(updatedPreferences, t);

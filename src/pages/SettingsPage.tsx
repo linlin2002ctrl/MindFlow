@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 import { Loader2, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/i18n';
+// Removed: import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const SettingsPage: React.FC = () => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  const { user, isLoading: isSessionLoading } = useSession(); // Removed fontPreference, setFontPreference
   const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
@@ -95,6 +96,8 @@ const SettingsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <p>{t('theme')}: Dark</p>
           </div>
+
+          {/* Removed Font Preference Selector */}
 
           <div className="flex items-center justify-between">
             <Label htmlFor="push-notifications" className="text-lg">{t('pushNotifications')}</Label>

@@ -126,6 +126,8 @@
       /* letter-spacing is generally not recommended for Burmese text unless for specific stylistic purposes */
     }
 
+    /* Removed custom font classes for dynamic switching */
+
     /* Full-screen mode for JournalSession on small screens */
     .full-screen-mode {
       @apply w-full h-full max-w-none rounded-none shadow-none border-none;

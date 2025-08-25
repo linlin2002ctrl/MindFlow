@@ -6,6 +6,7 @@ import GradientBackground from '../GradientBackground';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+// Removed: import { useSession } from '@/contexts/SessionContext'; // No longer needed for font preference
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -13,10 +14,11 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const isMobile = useIsMobile();
+  // Removed: const { isZawgyiUser } = useSession(); // No longer needed
 
   return (
     <GradientBackground>
-      <div className="flex min-h-screen">
+      <div className={cn("flex min-h-screen")}> {/* Removed fontClass application */}
         {!isMobile && <Sidebar />}
         <div className="flex flex-col flex-1">
           <Header onOpenSidebar={() => {}} />
