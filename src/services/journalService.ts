@@ -2,7 +2,7 @@ import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { SessionType } from '@/hooks/useConversationManager';
 import { showError } from '@/utils/toast';
 import { storageService } from './storageService';
-import { useTranslation } from '@/i18n/i18n.tsx'; // Import useTranslation
+// Removed: import { useTranslation } from '@/i18n/i18n.tsx';
 
 interface Message {
   role: 'user' | 'model';
@@ -28,10 +28,10 @@ export const journalService = {
   /**
    * Creates a new journal entry, saving it locally first and then attempting to sync.
    * @param {Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'>} entryData
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<JournalEntry | null>}
    */
-  createEntry: async (entryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'>): Promise<JournalEntry | null> => {
-    const { t } = useTranslation(); // Use hook inside function
+  createEntry: async (entryData: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at' | 'is_encrypted' | 'sync_status'>, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry | null> => {
     const newEntry: JournalEntry = {
       ...entryData,
       id: crypto.randomUUID(),
@@ -41,7 +41,7 @@ export const journalService = {
       sync_status: navigator.onLine ? 'synced' : 'pending',
     };
 
-    const locallySavedEntry = await storageService.saveJournalEntry(newEntry, newEntry.user_id);
+    const locallySavedEntry = await storageService.saveJournalEntry(newEntry, newEntry.user_id, t);
     if (!locallySavedEntry) {
       showError(t('errorSavingEntryLocally'));
       return null;
@@ -49,18 +49,18 @@ export const journalService = {
 
     if (navigator.onLine) {
       try {
-        const decryptedEntryForSupabase = await storageService.getJournalEntry(locallySavedEntry.id, locallySavedEntry.user_id);
+        const decryptedEntryForSupabase = await storageService.getJournalEntry(locallySavedEntry.id, locallySavedEntry.user_id, t);
         if (!decryptedEntryForSupabase) throw new Error("Failed to decrypt entry for Supabase sync.");
 
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('journal_entries').insert(decryptedEntryForSupabase).select().single()
+          await supabase.from('journal_entries').insert(decryptedEntryForSupabase).select().single(), t
         );
         if (error) throw error;
         return data;
       } catch (error: any) {
         console.error("Error creating journal entry in Supabase, marking as pending:", error.message);
         showError(t('errorSyncingEntryToCloud', error.message));
-        await storageService.saveJournalEntry({ ...locallySavedEntry, sync_status: 'pending' }, locallySavedEntry.user_id);
+        await storageService.saveJournalEntry({ ...locallySavedEntry, sync_status: 'pending' }, locallySavedEntry.user_id, t);
         return { ...locallySavedEntry, sync_status: 'pending' };
       }
     }
@@ -71,21 +71,21 @@ export const journalService = {
    * Fetches a journal entry by ID, prioritizing local storage.
    * @param {string} id
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<JournalEntry | null>}
    */
-  getEntry: async (id: string, userId: string): Promise<JournalEntry | null> => {
-    const { t } = useTranslation();
-    const localEntry = await storageService.getJournalEntry(id, userId);
+  getEntry: async (id: string, userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry | null> => {
+    const localEntry = await storageService.getJournalEntry(id, userId, t);
     if (localEntry) return localEntry;
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('journal_entries').select('*').eq('id', id).single()
+          await supabase.from('journal_entries').select('*').eq('id', id).single(), t
         );
         if (error) throw error;
         if (data) {
-          await storageService.saveJournalEntry({ ...data, is_encrypted: false, sync_status: 'synced' }, userId);
+          await storageService.saveJournalEntry({ ...data, is_encrypted: false, sync_status: 'synced' }, userId, t);
         }
         return data;
       } catch (error: any) {
@@ -100,23 +100,23 @@ export const journalService = {
   /**
    * Fetches all journal entries for a user, combining local and remote.
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<JournalEntry[] | null>}
    */
-  getEntriesByUser: async (userId: string): Promise<JournalEntry[] | null> => {
-    const { t } = useTranslation();
-    const localEntries = await storageService.getJournalEntries(userId);
+  getEntriesByUser: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry[] | null> => {
+    const localEntries = await storageService.getJournalEntries(userId, t);
     let remoteEntries: JournalEntry[] = [];
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('journal_entries').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+          await supabase.from('journal_entries').select('*').eq('user_id', userId).order('created_at', { ascending: false }), t
         );
         if (error) throw error;
         remoteEntries = data || [];
 
         for (const entry of remoteEntries) {
-          await storageService.saveJournalEntry({ ...entry, is_encrypted: false, sync_status: 'synced' }, userId);
+          await storageService.saveJournalEntry({ ...entry, is_encrypted: false, sync_status: 'synced' }, userId, t);
         }
       } catch (error: any) {
         console.error("Error fetching journal entries by user from Supabase:", error.message);
@@ -140,11 +140,11 @@ export const journalService = {
    * @param {string} id
    * @param {Partial<Omit<JournalEntry, 'id' | 'user_id' | 'created_at'>>} updateData
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<JournalEntry | null>}
    */
-  updateEntry: async (id: string, updateData: Partial<Omit<JournalEntry, 'id' | 'user_id' | 'created_at'>>, userId: string): Promise<JournalEntry | null> => {
-    const { t } = useTranslation();
-    const existingEntry = await storageService.getJournalEntry(id, userId);
+  updateEntry: async (id: string, updateData: Partial<Omit<JournalEntry, 'id' | 'user_id' | 'created_at'>>, userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry | null> => {
+    const existingEntry = await storageService.getJournalEntry(id, userId, t);
     if (!existingEntry) {
       showError(t('errorEntryNotFound'));
       return null;
@@ -158,7 +158,7 @@ export const journalService = {
       is_encrypted: false,
     };
 
-    const locallyUpdatedEntry = await storageService.saveJournalEntry(updatedEntry, userId);
+    const locallyUpdatedEntry = await storageService.saveJournalEntry(updatedEntry, userId, t);
     if (!locallyUpdatedEntry) {
       showError(t('errorUpdatingEntryLocally'));
       return null;
@@ -166,18 +166,18 @@ export const journalService = {
 
     if (navigator.onLine) {
       try {
-        const decryptedEntryForSupabase = await storageService.getJournalEntry(locallyUpdatedEntry.id, locallyUpdatedEntry.user_id);
+        const decryptedEntryForSupabase = await storageService.getJournalEntry(locallyUpdatedEntry.id, locallyUpdatedEntry.user_id, t);
         if (!decryptedEntryForSupabase) throw new Error("Failed to decrypt entry for Supabase sync.");
 
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('journal_entries').update(decryptedEntryForSupabase).eq('id', id).select().single()
+          await supabase.from('journal_entries').update(decryptedEntryForSupabase).eq('id', id).select().single(), t
         );
         if (error) throw error;
         return data;
       } catch (error: any) {
         console.error("Error updating journal entry in Supabase, marking as pending:", error.message);
         showError(t('errorUpdatingEntryToCloud', error.message));
-        await storageService.saveJournalEntry({ ...locallyUpdatedEntry, sync_status: 'pending' }, userId);
+        await storageService.saveJournalEntry({ ...locallyUpdatedEntry, sync_status: 'pending' }, userId, t);
         return { ...locallyUpdatedEntry, sync_status: 'pending' };
       }
     }
@@ -187,17 +187,17 @@ export const journalService = {
   /**
    * Deletes a journal entry by ID, deleting locally and then attempting to sync.
    * @param {string} id
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<boolean>}
    */
-  deleteEntry: async (id: string): Promise<boolean> => {
-    const { t } = useTranslation();
+  deleteEntry: async (id: string, t: (key: string, ...args: (string | number)[]) => string): Promise<boolean> => {
     const userId = (await supabase.auth.getUser()).data.user?.id;
     if (!userId) {
       showError(t('errorUserNotAuthenticatedToDelete'));
       return false;
     }
 
-    const locallyDeleted = await storageService.deleteJournalEntry(id);
+    const locallyDeleted = await storageService.deleteJournalEntry(id, t);
     if (!locallyDeleted) {
       showError(t('errorDeletingEntryLocally'));
       return false;
@@ -206,7 +206,7 @@ export const journalService = {
     if (navigator.onLine) {
       try {
         const { error } = await withSupabaseRetry(async () =>
-          await supabase.from('journal_entries').delete().eq('id', id)
+          await supabase.from('journal_entries').delete().eq('id', id), t
         );
         if (error) throw error;
         return true;

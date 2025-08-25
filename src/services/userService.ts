@@ -1,8 +1,7 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
 import { showError } from '@/utils/toast';
 import { storageService } from './storageService';
-import { useTranslation } from '@/i18n/i18n'; // Import useTranslation
+// Removed: import { useTranslation } from '@/i18n/i18n';
 
 export interface Profile {
   id: string;
@@ -33,21 +32,21 @@ export const userService = {
   /**
    * Fetches the current user's profile, prioritizing local cache.
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<Profile | null>}
    */
-  getProfile: async (userId: string): Promise<Profile | null> => {
-    const { t } = useTranslation();
-    const localProfile = await storageService.getUserProfile(userId);
+  getProfile: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<Profile | null> => {
+    const localProfile = await storageService.getUserProfile(userId); // Removed 't' parameter
     if (localProfile) return localProfile;
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+          await supabase.from('profiles').select('*').eq('id', userId).maybeSingle(), t
         );
         if (error) throw error;
         if (data) {
-          await storageService.cacheUserProfile(data);
+          await storageService.cacheUserProfile(data, t);
         }
         return data;
       } catch (error: any) {
@@ -63,19 +62,19 @@ export const userService = {
    * Updates the current user's profile, updating locally and then syncing.
    * @param {string} userId
    * @param {Partial<Omit<Profile, 'id' | 'updated_at'>>} updateData
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<Profile | null>}
    */
-  updateProfile: async (userId: string, updateData: Partial<Omit<Profile, 'id' | 'updated_at'>>): Promise<Profile | null> => {
-    const { t } = useTranslation();
-    const existingProfile = await storageService.getUserProfile(userId);
+  updateProfile: async (userId: string, updateData: Partial<Omit<Profile, 'id' | 'updated_at'>>, t: (key: string, ...args: (string | number)[]) => string): Promise<Profile | null> => {
+    const existingProfile = await storageService.getUserProfile(userId); // Removed 't' parameter
     const updatedProfile = { ...existingProfile, ...updateData, id: userId, updated_at: new Date().toISOString() };
 
-    await storageService.cacheUserProfile(updatedProfile);
+    await storageService.cacheUserProfile(updatedProfile, t);
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('profiles').update(updateData).eq('id', userId).select().single()
+          await supabase.from('profiles').update(updateData).eq('id', userId).select().single(), t
         );
         if (error) throw error;
         return data;
@@ -91,21 +90,21 @@ export const userService = {
   /**
    * Fetches the current user's preferences, prioritizing local cache.
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<UserPreferences | null>}
    */
-  getPreferences: async (userId: string): Promise<UserPreferences | null> => {
-    const { t } = useTranslation();
-    const localPreferences = await storageService.getUserPreferences(userId);
+  getPreferences: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<UserPreferences | null> => {
+    const localPreferences = await storageService.getUserPreferences(userId); // No 't' needed for this specific storage call
     if (localPreferences) return localPreferences;
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle()
+          await supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(), t
         );
         if (error) throw error;
         if (data) {
-          await storageService.cacheUserPreferences(data);
+          await storageService.cacheUserPreferences(data, t);
         }
         return data;
       } catch (error: any) {
@@ -121,19 +120,19 @@ export const userService = {
    * Updates the current user's preferences, updating locally and then syncing.
    * @param {string} userId
    * @param {Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>} updateData
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<UserPreferences | null>}
    */
-  updatePreferences: async (userId: string, updateData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<UserPreferences | null> => {
-    const { t } = useTranslation();
-    const existingPreferences = await storageService.getUserPreferences(userId);
+  updatePreferences: async (userId: string, updateData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>, t: (key: string, ...args: (string | number)[]) => string): Promise<UserPreferences | null> => {
+    const existingPreferences = await storageService.getUserPreferences(userId); // No 't' needed for this specific storage call
     const updatedPreferences = { ...existingPreferences, ...updateData, user_id: userId, updated_at: new Date().toISOString() };
 
-    await storageService.cacheUserPreferences(updatedPreferences);
+    await storageService.cacheUserPreferences(updatedPreferences, t);
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('user_preferences').update(updateData).eq('user_id', userId).select().single()
+          await supabase.from('user_preferences').update(updateData).eq('user_id', userId).select().single(), t
         );
         if (error) throw error;
         return data;

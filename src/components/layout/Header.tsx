@@ -22,14 +22,14 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
-        const profile = await userService.getProfile(user.id);
+        const profile = await userService.getProfile(user.id, t);
         setUserProfile(profile);
       } else {
         setUserProfile(null);
       }
     };
     fetchProfile();
-  }, [user]);
+  }, [user, t]);
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 flex items-center justify-between">

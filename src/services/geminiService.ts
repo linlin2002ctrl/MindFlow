@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { env } from '@/lib/env';
-import { useTranslation } from '@/i18n/i18n.tsx'; // Import useTranslation
+import { showError } from '@/utils/toast'; // Added import for showError
 
 const genAI = new GoogleGenerativeAI(env.geminiApiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -77,21 +77,21 @@ const fallbackQuestions: string[] = [
   "What's a feeling you're grateful for, even if it's challenging?",
 ];
 
-async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, t: (key: string, ...args: (string | number)[]) => string, retries = 3, delay = 1000): Promise<T> {
   try {
     return await fn();
   } catch (error) {
     if (retries > 0 && navigator.onLine) {
       console.warn(`Retrying after error: ${error}. Retries left: ${retries}`);
       await new Promise(res => setTimeout(res, delay));
-      return withRetry(fn, retries - 1, delay * 2);
+      return withRetry(fn, t, retries - 1, delay * 2);
     }
+    showError(t('errorGeminiOperationFailed')); // Using a generic error for Gemini
     throw error;
   }
 }
 
-export async function generateQuestion(mood: number): Promise<string> {
-  const { t } = useTranslation();
+export async function generateQuestion(mood: number, t: (key: string, ...args: (string | number)[]) => string): Promise<string> {
   if (!navigator.onLine) {
     console.log("Offline: Using fallback questions.");
     return fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
@@ -104,7 +104,7 @@ export async function generateQuestion(mood: number): Promise<string> {
       const chat = model.startChat({ safetySettings });
       const response = await chat.sendMessage(prompt);
       return response.response.text();
-    });
+    }, t);
     return result;
   } catch (error) {
     console.error("Error generating question from Gemini API, using fallback:", error);
@@ -112,8 +112,7 @@ export async function generateQuestion(mood: number): Promise<string> {
   }
 }
 
-export async function analyzeResponse(response: string): Promise<string> {
-  const { t } = useTranslation();
+export async function analyzeResponse(response: string, t: (key: string, ...args: (string | number)[]) => string): Promise<string> {
   if (!response.trim()) {
     return t('pleaseWriteSomething');
   }
@@ -128,7 +127,7 @@ export async function analyzeResponse(response: string): Promise<string> {
       const chat = model.startChat({ safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
       return apiResponse.response.text();
-    });
+    }, t);
     return result;
   } catch (error) {
     console.error("Error analyzing response from Gemini API:", error);
@@ -136,13 +135,12 @@ export async function analyzeResponse(response: string): Promise<string> {
   }
 }
 
-export async function suggestFollowUp(conversation: { role: string; parts: { text: string }[] }[]): Promise<string> {
-  const { t } = useTranslation();
+export async function suggestFollowUp(conversation: { role: string; parts: { text: string }[] }[], t: (key: string, ...args: (string | number)[]) => string): Promise<string> {
   if (!navigator.onLine) {
     return t('errorSuggestingFollowUpOffline');
   }
   if (conversation.length === 0) {
-    return generateQuestion(5);
+    return generateQuestion(5, t);
   }
 
   const prompt = `You are a friendly, empathetic AI journaling companion for users in Myanmar. Use respectful, community-centered language, addressing the user as "သင်" (thin). Based on the following conversation history, suggest one short, empathetic, and open-ended follow-up question to encourage further reflection. Avoid clinical language. Conversation: ${JSON.stringify(conversation)}`;
@@ -152,7 +150,7 @@ export async function suggestFollowUp(conversation: { role: string; parts: { tex
       const chat = model.startChat({ history: conversation, safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
       return apiResponse.response.text();
-    });
+    }, t);
     return result;
   } catch (error) {
     console.error("Error suggesting follow-up from Gemini API:", error);
@@ -160,8 +158,7 @@ export async function suggestFollowUp(conversation: { role: string; parts: { tex
   }
 }
 
-export async function generateInsights(journalEntries: string[]): Promise<string> {
-  const { t } = useTranslation();
+export async function generateInsights(journalEntries: string[], t: (key: string, ...args: (string | number)[]) => string): Promise<string> {
   if (journalEntries.length === 0) {
     return t('noJournalEntriesForInsights');
   }
@@ -177,7 +174,7 @@ export async function generateInsights(journalEntries: string[]): Promise<string
       const chat = model.startChat({ safetySettings });
       const apiResponse = await chat.sendMessage(prompt);
       return apiResponse.response.text();
-    });
+    }, t);
     return result;
   } catch (error) {
     console.error("Error generating insights from Gemini API:", error);
@@ -185,8 +182,7 @@ export async function generateInsights(journalEntries: string[]): Promise<string
   }
 }
 
-export async function generateRecommendations(journalEntries: string[]): Promise<string[]> {
-  const { t } = useTranslation();
+export async function generateRecommendations(journalEntries: string[], t: (key: string, ...args: (string | number)[]) => string): Promise<string[]> {
   if (journalEntries.length === 0) {
     return [t('writeFirstEntryForRecommendations')];
   }
@@ -203,7 +199,7 @@ export async function generateRecommendations(journalEntries: string[]): Promise
       const apiResponse = await chat.sendMessage(prompt);
       const text = apiResponse.response.text();
       return text.split('\n').filter(line => line.trim().length > 0 && (line.startsWith('-') || line.match(/^\d+\./))).map(line => line.replace(/^\d+\.\s*|-\s*/, '').trim());
-    });
+    }, t);
     return result;
   } catch (error) {
     console.error("Error generating recommendations from Gemini API:", error);

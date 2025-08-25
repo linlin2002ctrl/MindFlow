@@ -16,14 +16,14 @@ const Sidebar: React.FC = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
-        const profile = await userService.getProfile(user.id);
+        const profile = await userService.getProfile(user.id, t);
         setUserProfile(profile);
       } else {
         setUserProfile(null);
       }
     };
     fetchProfile();
-  }, [user]);
+  }, [user, t]);
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: t('home') },

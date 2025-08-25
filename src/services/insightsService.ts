@@ -1,7 +1,7 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { storageService } from './storageService';
-import { useTranslation } from '@/i18n/i18n.tsx'; // Import useTranslation
+// Removed: import { useTranslation } from '@/i18n/i18n.tsx';
 
 export interface AiInsight {
   id: string;
@@ -17,10 +17,10 @@ export const insightsService = {
   /**
    * Creates a new AI insight, saving it locally and then attempting to sync.
    * @param {Omit<AiInsight, 'id' | 'created_at' | 'sync_status'>} insightData
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<AiInsight | null>}
    */
-  createInsight: async (insightData: Omit<AiInsight, 'id' | 'created_at' | 'sync_status'>): Promise<AiInsight | null> => {
-    const { t } = useTranslation();
+  createInsight: async (insightData: Omit<AiInsight, 'id' | 'created_at' | 'sync_status'>, t: (key: string, ...args: (string | number)[]) => string): Promise<AiInsight | null> => {
     const newInsight: AiInsight = {
       ...insightData,
       id: crypto.randomUUID(),
@@ -28,19 +28,19 @@ export const insightsService = {
       sync_status: navigator.onLine ? 'synced' : 'pending',
     };
 
-    await storageService.cacheAiInsight(newInsight);
+    await storageService.cacheAiInsight(newInsight, t);
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('ai_insights').insert(newInsight).select().single()
+          await supabase.from('ai_insights').insert(newInsight).select().single(), t
         );
         if (error) throw error;
         return data;
       } catch (error: any) {
         console.error("Error creating AI insight in Supabase, marking as pending:", error.message);
         showError(t('errorSavingInsightToCloud', error.message));
-        await storageService.cacheAiInsight({ ...newInsight, sync_status: 'pending' });
+        await storageService.cacheAiInsight({ ...newInsight, sync_status: 'pending' }, t);
         return { ...newInsight, sync_status: 'pending' };
       }
     }
@@ -50,23 +50,23 @@ export const insightsService = {
   /**
    * Fetches AI insights for a user, prioritizing local cache.
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<AiInsight[] | null>}
    */
-  getInsightsByUser: async (userId: string): Promise<AiInsight[] | null> => {
-    const { t } = useTranslation();
-    const localInsights = await storageService.getAiInsights(userId);
+  getInsightsByUser: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<AiInsight[] | null> => {
+    const localInsights = await storageService.getAiInsights(userId); // No 't' needed for this specific storage call
     let remoteInsights: AiInsight[] = [];
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('ai_insights').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+          await supabase.from('ai_insights').select('*').eq('user_id', userId).order('created_at', { ascending: false }), t
         );
         if (error) throw error;
         remoteInsights = data || [];
 
         for (const insight of remoteInsights) {
-          await storageService.cacheAiInsight({ ...insight, sync_status: 'synced' });
+          await storageService.cacheAiInsight({ ...insight, sync_status: 'synced' }, t);
         }
       } catch (error: any) {
         console.error("Error fetching AI insights from Supabase:", error.message);
@@ -89,23 +89,23 @@ export const insightsService = {
    * Fetches AI insights for a specific journal entry, prioritizing local cache.
    * @param {string} entryId
    * @param {string} userId
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<AiInsight[] | null>}
    */
-  getInsightsByJournalEntry: async (entryId: string, userId: string): Promise<AiInsight[] | null> => {
-    const { t } = useTranslation();
-    const localInsights = (await storageService.getAiInsights(userId)).filter(i => i.entry_id === entryId);
+  getInsightsByJournalEntry: async (entryId: string, userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<AiInsight[] | null> => {
+    const localInsights = (await storageService.getAiInsights(userId)).filter(i => i.entry_id === entryId); // No 't' needed for this specific storage call
     let remoteInsights: AiInsight[] = [];
 
     if (navigator.onLine) {
       try {
         const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('ai_insights').select('*').eq('entry_id', entryId).order('created_at', { ascending: false })
+          await supabase.from('ai_insights').select('*').eq('entry_id', entryId).order('created_at', { ascending: false }), t
         );
         if (error) throw error;
         remoteInsights = data || [];
 
         for (const insight of remoteInsights) {
-          await storageService.cacheAiInsight({ ...insight, sync_status: 'synced' });
+          await storageService.cacheAiInsight({ ...insight, sync_status: 'synced' }, t);
         }
       } catch (error: any) {
         console.error("Error fetching AI insights by journal entry from Supabase:", error.message);

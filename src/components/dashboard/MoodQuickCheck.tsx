@@ -43,7 +43,7 @@ const MoodQuickCheck: React.FC = () => {
         ai_analysis: null,
         entry_text: `Quick mood check-in: ${mood.charAt(0).toUpperCase() + mood.slice(1)}.`,
         tags: ['mood_checkin', mood],
-      });
+      }, t);
 
       if (!newEntry) {
         toast.error(t('errorSavingMood'));

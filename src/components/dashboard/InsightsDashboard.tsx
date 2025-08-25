@@ -34,18 +34,18 @@ const InsightsDashboard: React.FC<InsightsDashboardProps> = () => {
 
     setIsLoading(true);
     try {
-      const entries = await journalService.getEntriesByUser(user.id);
+      const entries = await journalService.getEntriesByUser(user.id, t);
       setJournalEntries(entries || []);
 
-      const goals = await goalsService.getGoalsByUser(user.id);
+      const goals = await goalsService.getGoalsByUser(user.id, t);
       setUserGoals(goals || []);
 
       if (entries && entries.length > 0) {
         const entryTexts = entries.map(entry => entry.entry_text || '').filter(Boolean) as string[];
-        const summary = await generateInsights(entryTexts);
+        const summary = await generateInsights(entryTexts, t);
         setAiSummary(summary);
 
-        const recommendations = await generateRecommendations(entryTexts);
+        const recommendations = await generateRecommendations(entryTexts, t);
         setAiRecommendations(recommendations);
       } else {
         setAiSummary(t('startJournalingToUnlockInsights'));

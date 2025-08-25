@@ -3,7 +3,7 @@ import App from "./App.tsx";
 import "./globals.css";
 import { registerSW } from 'virtual:pwa-register';
 import { toast } from 'sonner';
-import { I18nProvider, useTranslation } from './i18n/i18n'; // Import I18nProvider and useTranslation
+import { I18nProvider, useTranslation } from './i18n/i18n.tsx'; // Import I18nProvider and useTranslation
 
 // Create a wrapper component to use the translation hook
 const MainApp = () => {

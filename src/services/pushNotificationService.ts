@@ -1,6 +1,6 @@
 import { supabase, withSupabaseRetry } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
-import { useTranslation } from '@/i18n/i18n'; // Import useTranslation
+// Removed: import { useTranslation } from '@/i18n/i18n';
 
 const VAPID_PUBLIC_KEY = 'YOUR_VAPID_PUBLIC_KEY_HERE'; 
 
@@ -39,10 +39,10 @@ export const pushNotificationService = {
   /**
    * Subscribes the user to push notifications and stores the subscription in Supabase.
    * @param {string} userId The ID of the authenticated user.
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<PushSubscription | null>} The new push subscription object, or null if failed.
    */
-  subscribeUser: async (userId: string): Promise<PushSubscription | null> => {
-    const { t } = useTranslation();
+  subscribeUser: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<PushSubscription | null> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       showError(t('errorPushNotificationsNotSupported'));
       return null;
@@ -54,7 +54,7 @@ export const pushNotificationService = {
 
       if (existingSubscription) {
         const { data: existingRecord, error: fetchError } = await withSupabaseRetry(async () =>
-          await supabase.from('push_subscriptions').select('*').eq('user_id', userId).eq('subscription->>endpoint', existingSubscription.endpoint).single()
+          await supabase.from('push_subscriptions').select('*').eq('user_id', userId).eq('subscription->>endpoint', existingSubscription.endpoint).single(), t
         );
 
         if (fetchError && fetchError.code !== 'PGRST116') {
@@ -67,7 +67,7 @@ export const pushNotificationService = {
         } else {
           const subscriptionData: PushSubscriptionData = JSON.parse(JSON.stringify(existingSubscription));
           const { data, error } = await withSupabaseRetry(async () =>
-            await supabase.from('push_subscriptions').insert({ user_id: userId, subscription: subscriptionData }).select().single()
+            await supabase.from('push_subscriptions').insert({ user_id: userId, subscription: subscriptionData }).select().single(), t
           );
           if (error) throw error;
           showSuccess(t('reRegisteredNotifications'));
@@ -84,7 +84,7 @@ export const pushNotificationService = {
       const subscriptionData: PushSubscriptionData = JSON.parse(JSON.stringify(newSubscription));
 
       const { data, error } = await withSupabaseRetry(async () =>
-        await supabase.from('push_subscriptions').insert({ user_id: userId, subscription: subscriptionData }).select().single()
+        await supabase.from('push_subscriptions').insert({ user_id: userId, subscription: subscriptionData }).select().single(), t
       );
 
       if (error) throw error;
@@ -101,10 +101,10 @@ export const pushNotificationService = {
   /**
    * Unsubscribes the user from push notifications and removes the subscription from Supabase.
    * @param {string} userId The ID of the authenticated user.
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<boolean>} True if unsubscribed successfully, false otherwise.
    */
-  unsubscribeUser: async (userId: string): Promise<boolean> => {
-    const { t } = useTranslation();
+  unsubscribeUser: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<boolean> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       showError(t('errorPushNotificationsNotSupported'));
       return false;
@@ -116,7 +116,7 @@ export const pushNotificationService = {
 
       if (subscription) {
         const { error } = await withSupabaseRetry(async () =>
-          await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('subscription->>endpoint', subscription.endpoint)
+          await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('subscription->>endpoint', subscription.endpoint), t
         );
 
         if (error) throw error;
@@ -155,9 +155,10 @@ export const pushNotificationService = {
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
-        const { data, error } = await withSupabaseRetry(async () =>
-          await supabase.from('push_subscriptions').select('id').eq('user_id', userId).eq('subscription->>endpoint', subscription.endpoint).single()
-        );
+        // Note: withSupabaseRetry is not used here as it requires 't' which is not available in this context.
+        // This function is called from SettingsPage which will pass 't' to subscribe/unsubscribe.
+        // For isUserSubscribed, we'll directly use supabase without retry/toast for simplicity.
+        const { data, error } = await supabase.from('push_subscriptions').select('id').eq('user_id', userId).eq('subscription->>endpoint', subscription.endpoint).single();
         return !!data && !error;
       }
       return false;
@@ -174,13 +175,13 @@ export const pushNotificationService = {
    * @param {string} title The title of the notification.
    * @param {string} body The body text of the notification.
    * @param {string} [url='/'] The URL to open when the notification is clicked.
+   * @param {(key: string, ...args: (string | number)[]) => string} t The translation function.
    * @returns {Promise<boolean>} True if the notification was sent successfully, false otherwise.
    */
-  sendTestNotification: async (userId: string, title: string, body: string, url: string = '/'): Promise<boolean> => {
-    const { t } = useTranslation();
+  sendTestNotification: async (userId: string, title: string, body: string, url: string = '/', t: (key: string, ...args: (string | number)[]) => string): Promise<boolean> => {
     try {
       const { data: subscriptionRecord, error: fetchError } = await withSupabaseRetry(async () =>
-        await supabase.from('push_subscriptions').select('subscription').eq('user_id', userId).single()
+        await supabase.from('push_subscriptions').select('subscription').eq('user_id', userId).single(), t
       );
 
       if (fetchError || !subscriptionRecord) {

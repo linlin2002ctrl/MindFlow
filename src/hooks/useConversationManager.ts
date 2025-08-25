@@ -97,6 +97,13 @@ export const useConversationManager = () => {
 
   const autoSaveIntervalRef = useRef<number | null>(null);
 
+  const addMessageToHistory = useCallback((role: 'user' | 'model', text: string) => {
+    setState(s => ({
+      ...s,
+      conversationHistory: [...s.conversationHistory, { role, parts: [{ text }] }],
+    }));
+  }, []);
+
   const saveEntry = useCallback(async (status: 'pending' | 'synced' | 'paused') => {
     if (!user || !state.currentEntryId) {
       console.warn("Cannot save entry: User not authenticated or entry ID missing.");
@@ -113,7 +120,7 @@ export const useConversationManager = () => {
         is_encrypted: false,
         sync_status: status,
         entry_text: state.entryText,
-      }, user.id);
+      }, user.id, t);
 
       if (!updatedEntry) {
         showError(t('errorAutoSaveFailed'));
@@ -128,102 +135,15 @@ export const useConversationManager = () => {
     }
   }, [user, state.currentEntryId, state.sessionType, state.currentMood, state.conversationHistory, state.aiAnalysis, state.entryText, t]);
 
-
-  useEffect(() => {
-    const allOfflineQuestions = [
-      ...OFFLINE_QUESTIONS.low,
-      ...OFFLINE_QUESTIONS.medium,
-      ...OFFLINE_QUESTIONS.high,
-    ];
-    storageService.cacheInitialAIQuestions(allOfflineQuestions);
-
-    const handleOnline = async () => {
-      setState(s => ({ ...s, isOffline: false }));
-      if (user) {
-        showSuccess(t('backOnlineSyncing'));
-        await syncService.syncPendingJournalEntries(user.id);
-
-        if (state.queuedResponses.length > 0) {
-          showSuccess(t('processingQueuedResponses', state.queuedResponses.length));
-          const responsesToProcess = [...state.queuedResponses];
-          setState(s => ({ ...s, queuedResponses: [], isLoadingAI: true }));
-
-          for (const response of responsesToProcess) {
-            await processUserResponse(response);
-          }
-          setState(s => ({ ...s, isLoadingAI: false }));
-          showSuccess(t('allQueuedResponsesProcessed'));
-        }
-
-        if (!state.isSessionActive && state.aiAnalysis === t('offlineAnalysisMessage') && state.currentEntryId && state.entryText.trim()) {
-          showSuccess(t('reanalyzingOfflineEntry'));
-          setState(s => ({ ...s, isLoadingAI: true }));
-          try {
-            const finalAnalysis = await analyzeResponse(state.entryText);
-            setState(s => ({ ...s, aiAnalysis: finalAnalysis, isLoadingAI: false }));
-            await saveEntry('synced');
-            showSuccess(t('offlineEntryAnalyzedSaved'));
-          } catch (error) {
-            console.error("Error re-analyzing offline entry:", error);
-            showError(t('errorReanalyzingOfflineEntry'));
-            setState(s => ({ ...s, isLoadingAI: false }));
-          }
-        }
-      }
-    };
-
-    const handleOffline = () => {
-      setState(s => ({ ...s, isOffline: true }));
-      showError(t('offlineToast'));
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    if (navigator.onLine && user) {
-      syncService.syncPendingJournalEntries(user.id);
-    }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [user, state.queuedResponses, state.isSessionActive, state.aiAnalysis, state.currentEntryId, state.entryText, saveEntry, t]);
-
-  useEffect(() => {
-    if (state.isSessionActive && state.entryText.length > 0 && user && state.currentEntryId && !state.isPaused) {
-      if (autoSaveIntervalRef.current) {
-        clearInterval(autoSaveIntervalRef.current);
-      }
-      autoSaveIntervalRef.current = window.setInterval(() => saveEntry('pending'), 30000);
-    } else {
-      if (autoSaveIntervalRef.current) {
-        clearInterval(autoSaveIntervalRef.current);
-      }
-    }
-    return () => {
-      if (autoSaveIntervalRef.current) {
-        clearInterval(autoSaveIntervalRef.current);
-      }
-    };
-  }, [state.isSessionActive, state.entryText, user, state.currentEntryId, state.isPaused, saveEntry]);
-
-  const addMessageToHistory = useCallback((role: 'user' | 'model', text: string) => {
-    setState(s => ({
-      ...s,
-      conversationHistory: [...s.conversationHistory, { role, parts: [{ text }] }],
-    }));
-  }, []);
-
   const getNextQuestion = useCallback(async (mood: number, history: Message[]): Promise<string> => {
     if (state.isOffline) {
       return getOfflineQuestion(mood);
     }
     try {
       if (history.length === 0) {
-        return await generateQuestion(mood);
+        return await generateQuestion(mood, t);
       } else {
-        return await suggestFollowUp(history);
+        return await suggestFollowUp(history, t);
       }
     } catch (error) {
       console.error("Error getting AI question, using fallback:", error);
@@ -242,7 +162,7 @@ export const useConversationManager = () => {
     if (state.entryText.trim()) {
       if (!state.isOffline) {
         try {
-          finalAnalysis = await analyzeResponse(state.entryText);
+          finalAnalysis = await analyzeResponse(state.entryText, t);
           showSuccess(t('aiAnalysisComplete'));
           if (user && state.currentEntryId) {
             await insightsService.createInsight({
@@ -250,7 +170,7 @@ export const useConversationManager = () => {
               entry_id: state.currentEntryId,
               insight_type: 'session_summary',
               content: finalAnalysis,
-            });
+            }, t);
           }
         } catch (error) {
           console.error("Error during final AI analysis:", error);
@@ -278,7 +198,7 @@ export const useConversationManager = () => {
         entry_text: state.entryText,
         tags: null,
       };
-      const newEntry = await journalService.createEntry(newEntryData);
+      const newEntry = await journalService.createEntry(newEntryData, t);
       if (!newEntry) {
         showError(t('errorSavingJournalEntry'));
       } else {
@@ -288,6 +208,128 @@ export const useConversationManager = () => {
       showError(t('errorUserNotAuthenticatedSave'));
     }
   }, [state.entryText, state.isOffline, state.sessionType, state.currentMood, state.conversationHistory, addMessageToHistory, user, state.currentEntryId, saveEntry, t]);
+
+  const processUserResponse = useCallback(async (userResponse: string) => {
+    if (!state.isSessionActive || !state.currentMood || state.isPaused) return;
+
+    addMessageToHistory('user', userResponse);
+    setState(s => ({ ...s, entryText: s.entryText + (s.entryText ? '\n\n' : '') + userResponse, isLoadingAI: true }));
+
+    if (state.isOffline) {
+      setState(s => ({ ...s, queuedResponses: [...s.queuedResponses, userResponse], isLoadingAI: false }));
+      showError(t('errorProcessingResponseOffline'));
+      if (state.questionCount < state.maxQuestions) {
+        const nextOfflineQuestion = await getOfflineQuestion(state.currentMood);
+        setState(s => ({ ...s, currentQuestion: nextOfflineQuestion, questionCount: s.questionCount + 1 }));
+        addMessageToHistory('model', nextOfflineQuestion);
+      } else {
+        endSession();
+      }
+    } else {
+      if (state.questionCount < state.maxQuestions) {
+        const nextQuestion = await getNextQuestion(state.currentMood, state.conversationHistory);
+        setState(s => ({ ...s, currentQuestion: nextQuestion, questionCount: s.questionCount + 1, isLoadingAI: false }));
+        addMessageToHistory('model', nextQuestion);
+      } else {
+        endSession();
+      }
+    }
+  }, [state.isSessionActive, state.currentMood, state.entryText, state.questionCount, state.maxQuestions, state.isPaused, state.isOffline, state.conversationHistory, addMessageToHistory, getNextQuestion, getOfflineQuestion, endSession, t]);
+
+
+  useEffect(() => {
+    const allOfflineQuestions = [
+      ...OFFLINE_QUESTIONS.low,
+      ...OFFLINE_QUESTIONS.medium,
+      ...OFFLINE_QUESTIONS.high,
+    ];
+    storageService.cacheInitialAIQuestions(allOfflineQuestions);
+
+    const handleOnline = async () => {
+      setState(s => ({ ...s, isOffline: false }));
+      if (user) {
+        showSuccess(t('backOnlineSyncing'));
+        await syncService.syncPendingJournalEntries(user.id, t);
+
+        if (state.queuedResponses.length > 0) {
+          showSuccess(t('processingQueuedResponses', state.queuedResponses.length));
+          const responsesToProcess = [...state.queuedResponses];
+          setState(s => ({ ...s, queuedResponses: [], isLoadingAI: true }));
+
+          for (const response of responsesToProcess) {
+            await processUserResponse(response); // This is where the error was
+          }
+          setState(s => ({ ...s, isLoadingAI: false }));
+          showSuccess(t('allQueuedResponsesProcessed'));
+        }
+
+        if (!state.isSessionActive && state.aiAnalysis === t('offlineAnalysisMessage') && state.currentEntryId && state.entryText.trim()) {
+          showSuccess(t('reanalyzingOfflineEntry'));
+          setState(s => ({ ...s, isLoadingAI: true }));
+          try {
+            const finalAnalysis = await analyzeResponse(state.entryText, t);
+            setState(s => ({ ...s, aiAnalysis: finalAnalysis, isLoadingAI: false }));
+            await saveEntry('synced');
+            showSuccess(t('offlineEntryAnalyzedSaved'));
+          } catch (error) {
+            console.error("Error re-analyzing offline entry:", error);
+            showError(t('errorReanalyzingOfflineEntry'));
+            setState(s => ({ ...s, isLoadingAI: false }));
+          }
+        }
+      }
+    };
+
+    const handleOffline = () => {
+      setState(s => ({ ...s, isOffline: true }));
+      showError(t('offlineToast'));
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (navigator.onLine && user) {
+      syncService.syncPendingJournalEntries(user.id, t);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user, state.queuedResponses, state.isSessionActive, state.aiAnalysis, state.currentEntryId, state.entryText, saveEntry, t, processUserResponse]); // processUserResponse is now defined
+
+  useEffect(() => {
+    if (state.isSessionActive && state.entryText.length > 0 && user && state.currentEntryId && !state.isPaused) {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+      autoSaveIntervalRef.current = window.setInterval(() => saveEntry('pending'), 30000);
+    } else {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+    }
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+    };
+  }, [state.isSessionActive, state.entryText, user, state.currentEntryId, state.isPaused, saveEntry]);
+
+  const skipQuestion = useCallback(async () => {
+    if (!state.isSessionActive || !state.currentMood || state.isPaused) return;
+
+    showSuccess(t('questionSkipped'));
+    setState(s => ({ ...s, isLoadingAI: true }));
+
+    if (state.questionCount < state.maxQuestions) {
+      const nextQuestion = await getNextQuestion(state.currentMood, state.conversationHistory);
+      setState(s => ({ ...s, currentQuestion: nextQuestion, questionCount: s.questionCount + 1, isLoadingAI: false }));
+      addMessageToHistory('model', nextQuestion);
+    } else {
+      endSession();
+    }
+  }, [state.isSessionActive, state.currentMood, state.questionCount, state.maxQuestions, state.isPaused, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession, t]);
 
   const discardSession = useCallback(async () => {
     if (!user || !state.currentEntryId) {
@@ -300,7 +342,7 @@ export const useConversationManager = () => {
       clearInterval(autoSaveIntervalRef.current);
     }
 
-    const deleted = await journalService.deleteEntry(state.currentEntryId);
+    const deleted = await journalService.deleteEntry(state.currentEntryId, t);
 
     if (!deleted) {
       showError(t('errorDiscardSession'));
@@ -371,7 +413,7 @@ export const useConversationManager = () => {
       tags: null,
     };
 
-    const newEntry = await journalService.createEntry(newEntryData);
+    const newEntry = await journalService.createEntry(newEntryData, t);
 
     if (!newEntry) {
       showError(t('errorStartingSession'));
@@ -391,48 +433,6 @@ export const useConversationManager = () => {
     addMessageToHistory('model', firstQuestion);
     showSuccess(t('journalingSessionStarted'));
   }, [addMessageToHistory, getNextQuestion, user, t]);
-
-  const processUserResponse = useCallback(async (userResponse: string) => {
-    if (!state.isSessionActive || !state.currentMood || state.isPaused) return;
-
-    addMessageToHistory('user', userResponse);
-    setState(s => ({ ...s, entryText: s.entryText + (s.entryText ? '\n\n' : '') + userResponse, isLoadingAI: true }));
-
-    if (state.isOffline) {
-      setState(s => ({ ...s, queuedResponses: [...s.queuedResponses, userResponse], isLoadingAI: false }));
-      showError(t('errorProcessingResponseOffline'));
-      if (state.questionCount < state.maxQuestions) {
-        const nextOfflineQuestion = await getOfflineQuestion(state.currentMood);
-        setState(s => ({ ...s, currentQuestion: nextOfflineQuestion, questionCount: s.questionCount + 1 }));
-        addMessageToHistory('model', nextOfflineQuestion);
-      } else {
-        endSession();
-      }
-    } else {
-      if (state.questionCount < state.maxQuestions) {
-        const nextQuestion = await getNextQuestion(state.currentMood, state.conversationHistory);
-        setState(s => ({ ...s, currentQuestion: nextQuestion, questionCount: s.questionCount + 1, isLoadingAI: false }));
-        addMessageToHistory('model', nextQuestion);
-      } else {
-        endSession();
-      }
-    }
-  }, [state.isSessionActive, state.currentMood, state.entryText, state.questionCount, state.maxQuestions, state.isPaused, state.isOffline, state.conversationHistory, addMessageToHistory, getNextQuestion, getOfflineQuestion, endSession, t]);
-
-  const skipQuestion = useCallback(async () => {
-    if (!state.isSessionActive || !state.currentMood || state.isPaused) return;
-
-    showSuccess(t('questionSkipped'));
-    setState(s => ({ ...s, isLoadingAI: true }));
-
-    if (state.questionCount < state.maxQuestions) {
-      const nextQuestion = await getNextQuestion(state.currentMood, state.conversationHistory);
-      setState(s => ({ ...s, currentQuestion: nextQuestion, questionCount: s.questionCount + 1, isLoadingAI: false }));
-      addMessageToHistory('model', nextQuestion);
-    } else {
-      endSession();
-    }
-  }, [state.isSessionActive, state.currentMood, state.questionCount, state.maxQuestions, state.isPaused, state.conversationHistory, addMessageToHistory, getNextQuestion, endSession, t]);
 
   return {
     ...state,

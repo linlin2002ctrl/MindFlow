@@ -18,7 +18,7 @@ const RecentEntries: React.FC = () => {
     const fetchEntries = async () => {
       if (user) {
         setIsLoading(true);
-        const entries = await journalService.getEntriesByUser(user.id);
+        const entries = await journalService.getEntriesByUser(user.id, t);
         setRecentEntries(entries ? entries.slice(0, 3) : []);
         setIsLoading(false);
       } else {
@@ -27,7 +27,7 @@ const RecentEntries: React.FC = () => {
       }
     };
     fetchEntries();
-  }, [user]);
+  }, [user, t]);
 
   return (
     <GlassCard className="p-6">

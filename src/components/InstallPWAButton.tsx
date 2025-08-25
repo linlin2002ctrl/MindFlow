@@ -24,6 +24,10 @@ const InstallPWAButton: React.FC = () => {
 
   const trackPWAEvent = useCallback(async (eventType: string, eventData?: any) => {
     if (user) {
+      // Note: supabase.from().insert() does not directly take 't' as a parameter.
+      // The 't' function is used for toast messages or error handling within services.
+      // For direct Supabase calls like this, 't' is not needed unless the error handling
+      // itself uses a service function that requires 't'.
       const { error } = await supabase.from('pwa_install_events').insert({
         user_id: user.id,
         event_type: eventType,
@@ -31,9 +35,10 @@ const InstallPWAButton: React.FC = () => {
       });
       if (error) {
         console.error("Error tracking PWA event:", error.message);
+        toast.error(t('errorTrackingPWAEvent', error.message)); // Use t for toast here
       }
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {

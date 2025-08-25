@@ -42,10 +42,10 @@ const SettingsPage: React.FC = () => {
     setIsLoadingNotifications(true);
     let success = false;
     if (checked) {
-      const subscription = await pushNotificationService.subscribeUser(user.id);
+      const subscription = await pushNotificationService.subscribeUser(user.id, t);
       success = !!subscription;
     } else {
-      success = await pushNotificationService.unsubscribeUser(user.id);
+      success = await pushNotificationService.unsubscribeUser(user.id, t);
     }
 
     if (success) {
@@ -71,7 +71,8 @@ const SettingsPage: React.FC = () => {
       user.id,
       t('mindFlowTestNotification'),
       t('testNotificationBody'),
-      "/dashboard"
+      "/dashboard",
+      t
     );
     if (success) {
       toast.success(t('testNotificationSent'));

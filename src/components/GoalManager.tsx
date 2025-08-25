@@ -39,14 +39,14 @@ const GoalManager: React.FC = () => {
   const fetchGoals = async (status: GoalStatus) => {
     if (!user) return;
     setIsLoading(true);
-    const fetchedGoals = await goalsService.getGoalsByStatus(user.id, status);
+    const fetchedGoals = await goalsService.getGoalsByStatus(user.id, status, t);
     setGoals(fetchedGoals || []);
     setIsLoading(false);
   };
 
   useEffect(() => {
     fetchGoals(activeTab);
-  }, [user, activeTab]);
+  }, [user, activeTab, t]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -79,7 +79,7 @@ const GoalManager: React.FC = () => {
       };
 
       if (editingGoalId) {
-        const updatedGoal = await goalsService.updateGoal(editingGoalId, goalData);
+        const updatedGoal = await goalsService.updateGoal(editingGoalId, goalData, t);
         if (updatedGoal) {
           toast.success(t('goalUpdatedSuccess'));
           setGoals(goals.map(g => (g.id === editingGoalId ? { ...g, ...updatedGoal } : g)));
@@ -94,7 +94,7 @@ const GoalManager: React.FC = () => {
           progress: 0,
           status: 'active',
           related_journal_entries: [],
-        });
+        }, t);
         if (createdGoal) {
           toast.success(t('goalCreatedSuccess'));
           setGoals(prev => [createdGoal, ...prev]);
@@ -128,7 +128,7 @@ const GoalManager: React.FC = () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      const deleted = await goalsService.deleteGoal(goalId);
+      const deleted = await goalsService.deleteGoal(goalId, t);
       if (deleted) {
         toast.success(t('goalDeletedSuccess'));
         setGoals(goals.filter(g => g.id !== goalId));
@@ -149,7 +149,7 @@ const GoalManager: React.FC = () => {
     const goalToUpdate = goals.find(g => g.id === goalId);
     if (!goalToUpdate) return;
 
-    const updatedGoal = await goalsService.updateGoal(goalId, { progress: newProgress });
+    const updatedGoal = await goalsService.updateGoal(goalId, { progress: newProgress }, t);
     if (updatedGoal) {
       setGoals(goals.map(g => (g.id === goalId ? { ...g, progress: newProgress } : g)));
       toast.success(t('goalProgressUpdated'));
@@ -164,7 +164,7 @@ const GoalManager: React.FC = () => {
     const goalToUpdate = goals.find(g => g.id === goalId);
     if (!goalToUpdate) return;
 
-    const updatedGoal = await goalsService.updateGoal(goalId, { status: newStatus });
+    const updatedGoal = await goalsService.updateGoal(goalId, { status: newStatus }, t);
     if (updatedGoal) {
       toast.success(t('goalStatusUpdated', newStatus));
       setGoals(goals.filter(g => g.id !== activeTab));

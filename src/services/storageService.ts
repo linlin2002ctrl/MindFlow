@@ -5,7 +5,7 @@ import { AiInsight } from './insightsService';
 import { showError, showSuccess } from '@/utils/toast';
 import { env } from '@/lib/env';
 import { supabase } from '@/integrations/supabase/client';
-import { useTranslation } from '@/i18n/i18n'; // Import useTranslation
+// Removed: import { useTranslation } from '@/i18n/i18n';
 
 const DB_NAME = 'mindflow-db';
 const DB_VERSION = 2;
@@ -124,8 +124,7 @@ async function decryptData(encryptedData: string, userId: string): Promise<strin
 }
 
 export const storageService = {
-  saveJournalEntry: async (entry: JournalEntry, userId: string): Promise<JournalEntry | null> => {
-    const { t } = useTranslation();
+  saveJournalEntry: async (entry: JournalEntry, userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry | null> => {
     try {
       const database = await initDB();
       const tx = database.transaction(JOURNAL_ENTRIES_STORE, 'readwrite');
@@ -150,8 +149,7 @@ export const storageService = {
     }
   },
 
-  getJournalEntry: async (id: string, userId: string): Promise<JournalEntry | null> => {
-    const { t } = useTranslation();
+  getJournalEntry: async (id: string, userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry | null> => {
     try {
       const database = await initDB();
       const entry = await database.get(JOURNAL_ENTRIES_STORE, id);
@@ -172,8 +170,7 @@ export const storageService = {
     }
   },
 
-  getJournalEntries: async (userId: string): Promise<JournalEntry[]> => {
-    const { t } = useTranslation();
+  getJournalEntries: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<JournalEntry[]> => {
     try {
       const database = await initDB();
       const entries = await database.getAll(JOURNAL_ENTRIES_STORE);
@@ -197,8 +194,7 @@ export const storageService = {
     }
   },
 
-  deleteJournalEntry: async (id: string): Promise<boolean> => {
-    const { t } = useTranslation();
+  deleteJournalEntry: async (id: string, t: (key: string, ...args: (string | number)[]) => string): Promise<boolean> => {
     try {
       const database = await initDB();
       await database.delete(JOURNAL_ENTRIES_STORE, id);
@@ -249,8 +245,7 @@ export const storageService = {
     }
   },
 
-  cacheUserPreferences: async (preferences: UserPreferences): Promise<UserPreferences | null> => {
-    const { t } = useTranslation();
+  cacheUserPreferences: async (preferences: UserPreferences, t: (key: string, ...args: (string | number)[]) => string): Promise<UserPreferences | null> => {
     try {
       const database = await initDB();
       await database.put(USER_PREFERENCES_STORE, preferences);
@@ -272,8 +267,7 @@ export const storageService = {
     }
   },
 
-  cacheUserProfile: async (profile: Profile): Promise<Profile | null> => {
-    const { t } = useTranslation();
+  cacheUserProfile: async (profile: Profile, t: (key: string, ...args: (string | number)[]) => string): Promise<Profile | null> => {
     try {
       const database = await initDB();
       await database.put(USER_PROFILES_STORE, profile);
@@ -295,8 +289,7 @@ export const storageService = {
     }
   },
 
-  cacheAiInsight: async (insight: AiInsight): Promise<AiInsight | null> => {
-    const { t } = useTranslation();
+  cacheAiInsight: async (insight: AiInsight, t: (key: string, ...args: (string | number)[]) => string): Promise<AiInsight | null> => {
     try {
       const database = await initDB();
       await database.put(AI_INSIGHTS_STORE, insight);
@@ -319,8 +312,7 @@ export const storageService = {
     }
   },
 
-  syncWithCloud: async (userId: string): Promise<void> => {
-    const { t } = useTranslation();
+  syncWithCloud: async (userId: string, t: (key: string, ...args: (string | number)[]) => string): Promise<void> => {
     if (!navigator.onLine) {
       console.log("Still offline, cannot sync with cloud.");
       return;

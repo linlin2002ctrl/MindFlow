@@ -55,7 +55,7 @@ const ShareTargetPage: React.FC = () => {
         ai_analysis: null,
         entry_text: entryContent,
         tags: ['shared_content'],
-      });
+      }, t);
 
       if (newEntry) {
         toast.success(t('sharedContentSaved'));
